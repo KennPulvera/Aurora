@@ -30,7 +30,8 @@ const corsOptions = {
   origin: [
     'http://localhost:3000', // Local development
     'https://localhost:3000', // Local development with HTTPS
-    process.env.FRONTEND_URL, // Production Netlify URL
+    'https://avaaaurora.netlify.app', // Production Netlify URL
+    process.env.FRONTEND_URL, // Additional frontend URL from env
     /^https:\/\/.*\.netlify\.app$/ // Any Netlify preview deploys
   ].filter(Boolean),
   credentials: true,
