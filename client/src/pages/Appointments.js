@@ -30,6 +30,7 @@ const Appointments = () => {
       await fetchPatients();
     };
     loadData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedDate]);
 
   const fetchAppointments = async () => {

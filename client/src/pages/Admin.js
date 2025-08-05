@@ -75,6 +75,7 @@ const Admin = () => {
       }
     };
     loadData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedIndustry, showUserManagement]);
 
   const fetchIndustryStats = async () => {
