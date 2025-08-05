@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { ShoppingCart, Plus, Minus, Trash2, CreditCard, DollarSign, Calculator, Package } from 'lucide-react';
+import { ShoppingCart, Plus, Minus, Trash2, CreditCard, Package } from 'lucide-react';
 import axios from 'axios';
 import toast from 'react-hot-toast';
 import { formatPeso } from '../utils/currency';

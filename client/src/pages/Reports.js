@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { FileText, Download, Calendar, TrendingUp, DollarSign, Package } from 'lucide-react';
+import { FileText, Download, TrendingUp, DollarSign, Package } from 'lucide-react';
 import axios from 'axios';
 import { formatPeso } from '../utils/currency';
 

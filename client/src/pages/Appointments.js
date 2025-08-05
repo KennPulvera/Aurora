@@ -25,9 +25,12 @@ const Appointments = () => {
   });
 
   useEffect(() => {
-    fetchAppointments();
-    fetchPatients();
-  }, [selectedDate, fetchAppointments, fetchPatients]);
+    const loadData = async () => {
+      await fetchAppointments();
+      await fetchPatients();
+    };
+    loadData();
+  }, [selectedDate]);
 
   const fetchAppointments = async () => {
     try {
@@ -106,16 +109,16 @@ const Appointments = () => {
     }
   };
 
-  const updateAppointmentStatus = async (appointmentId, newStatus) => {
-    try {
-      await axios.patch(`/api/appointments/${appointmentId}/status`, { status: newStatus });
-      toast.success(`Appointment ${newStatus}`);
-      fetchAppointments();
-    } catch (error) {
-      console.error('Error updating appointment status:', error);
-      toast.error('Failed to update appointment status');
-    }
-  };
+  // const updateAppointmentStatus = async (appointmentId, newStatus) => {
+  //   try {
+  //     await axios.patch(`/api/appointments/${appointmentId}/status`, { status: newStatus });
+  //     toast.success(`Appointment ${newStatus}`);
+  //     fetchAppointments();
+  //   } catch (error) {
+  //     console.error('Error updating appointment status:', error);
+  //     toast.error('Failed to update appointment status');
+  //   }
+  // };
 
   const resetForm = () => {
     setFormData({

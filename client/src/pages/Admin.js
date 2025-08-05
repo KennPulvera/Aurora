@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { 
   Shield, 
-  Building, 
   Users, 
   Package, 
   ShoppingCart, 
@@ -69,11 +68,14 @@ const Admin = () => {
   ];
 
   useEffect(() => {
-    fetchIndustryStats();
-    if (showUserManagement) {
-      fetchUsers();
-    }
-  }, [selectedIndustry, showUserManagement, fetchIndustryStats]);
+    const loadData = async () => {
+      await fetchIndustryStats();
+      if (showUserManagement) {
+        await fetchUsers();
+      }
+    };
+    loadData();
+  }, [selectedIndustry, showUserManagement]);
 
   const fetchIndustryStats = async () => {
     setLoading(true);

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { TrendingUp, DollarSign, ShoppingCart, Calendar, BarChart3, TrendingDown } from 'lucide-react';
+import { TrendingUp, DollarSign, ShoppingCart, Calendar, BarChart3 } from 'lucide-react';
 import axios from 'axios';
 import { formatPeso } from '../utils/currency';
 
@@ -15,7 +15,7 @@ const Sales = () => {
   });
   const [recentOrders, setRecentOrders] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [selectedPeriod, setSelectedPeriod] = useState('today');
+  const [selectedPeriod] = useState('today');
 
   const user = JSON.parse(localStorage.getItem('user') || '{}');
 

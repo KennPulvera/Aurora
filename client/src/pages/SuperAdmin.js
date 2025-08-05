@@ -11,8 +11,7 @@ import {
   AlertTriangle,
   CheckCircle,
   XCircle,
-  Search,
-  Filter
+  Search
 } from 'lucide-react';
 import axios from 'axios';
 import toast from 'react-hot-toast';
@@ -62,19 +61,19 @@ const SuperAdmin = () => {
     }
   };
 
-  const handleUpdateSubscription = async (businessId, subscriptionData) => {
-    try {
-      const token = localStorage.getItem('token');
-      await axios.put(`/api/superadmin/businesses/${businessId}/subscription`, subscriptionData, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      toast.success('Subscription updated successfully');
-      fetchDashboardData();
-    } catch (error) {
-      console.error('Error updating subscription:', error);
-      toast.error('Failed to update subscription');
-    }
-  };
+  // const handleUpdateSubscription = async (businessId, subscriptionData) => {
+  //   try {
+  //     const token = localStorage.getItem('token');
+  //     await axios.put(`/api/superadmin/businesses/${businessId}/subscription`, subscriptionData, {
+  //       headers: { Authorization: `Bearer ${token}` }
+  //     });
+  //     toast.success('Subscription updated successfully');
+  //     fetchDashboardData();
+  //   } catch (error) {
+  //     console.error('Error updating subscription:', error);
+  //     toast.error('Failed to update subscription');
+  //   }
+  // };
 
   const handleToggleBusinessStatus = async (businessId, isActive) => {
     try {
