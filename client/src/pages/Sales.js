@@ -22,6 +22,7 @@ const Sales = () => {
   useEffect(() => {
     fetchSalesData();
     fetchRecentOrders();
+// eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedPeriod]);
 
   const fetchSalesData = async () => {

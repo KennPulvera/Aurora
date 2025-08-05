@@ -18,6 +18,8 @@ export const formatPHP = (amount) => {
   }).format(amount);
 };
 
+export default currencyUtils;
+
 /**
  * Format amount to simple peso string without currency symbol
  * @param {number} amount - The amount to format
@@ -71,7 +73,7 @@ export const currencyConfig = {
   code: 'PHP'
 };
 
-export default {
+const currencyUtils = {
   formatPHP,
   formatAmount,
   formatPeso,

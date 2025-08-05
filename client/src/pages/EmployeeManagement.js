@@ -38,6 +38,7 @@ const EmployeeManagement = () => {
       fetchEmployees();
       fetchBusinessInfo();
     }
+// eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const fetchEmployees = async () => {

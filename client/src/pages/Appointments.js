@@ -27,7 +27,7 @@ const Appointments = () => {
   useEffect(() => {
     fetchAppointments();
     fetchPatients();
-  }, [selectedDate]);
+  }, [selectedDate, fetchAppointments, fetchPatients]);
 
   const fetchAppointments = async () => {
     try {

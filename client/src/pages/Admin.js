@@ -73,7 +73,7 @@ const Admin = () => {
     if (showUserManagement) {
       fetchUsers();
     }
-  }, [selectedIndustry, showUserManagement]);
+  }, [selectedIndustry, showUserManagement, fetchIndustryStats]);
 
   const fetchIndustryStats = async () => {
     setLoading(true);
@@ -99,6 +99,12 @@ const Admin = () => {
         case 'services':
           promises.push(
             axios.get('/api/appointments')
+          );
+          break;
+        default:
+          promises.push(
+            axios.get(`/api/products?industry=${selectedIndustry}`),
+            axios.get(`/api/orders?industry=${selectedIndustry}`)
           );
           break;
       }

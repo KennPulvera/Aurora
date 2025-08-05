@@ -16,6 +16,7 @@ const OrderQueue = () => {
     // Poll for new orders every 30 seconds
     const interval = setInterval(fetchOrders, 30000);
     return () => clearInterval(interval);
+// eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const fetchOrders = async () => {

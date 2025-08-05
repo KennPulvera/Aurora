@@ -23,6 +23,7 @@ const Recipes = () => {
 
   useEffect(() => {
     loadRecipes();
+// eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const loadRecipes = () => {
