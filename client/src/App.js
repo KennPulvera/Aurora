@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AnimatePresence } from 'framer-motion';
 import Sidebar from './components/Sidebar';
 import Dashboard from './pages/Dashboard';
@@ -20,6 +20,11 @@ import Profile from './pages/Profile';
 import Login from './pages/Login';
 import Landing from './pages/Landing';
 
+import PublicFeatures from './pages/PublicFeatures';
+import Features from './pages/Features';
+import Pricing from './pages/Pricing';
+import Affiliate from './pages/Affiliate';
+
 // Healthcare pages
 import Appointments from './pages/Appointments';
 import Patients from './pages/Patients';
@@ -35,14 +40,13 @@ import Customers from './pages/Customers';
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const [showLanding, setShowLanding] = useState(true);
+  const location = useLocation();
 
   useEffect(() => {
     // Check if user is authenticated
     const token = localStorage.getItem('token');
     if (token) {
       setIsAuthenticated(true);
-      setShowLanding(false);
     }
     setIsLoading(false);
   }, []);
@@ -55,11 +59,27 @@ function App() {
     );
   }
 
+  // Public routes that don't require authentication
+  const publicRoutes = ['/', '/features', '/pricing', '/affiliate', '/login'];
+  const isPublicRoute = publicRoutes.includes(location.pathname);
+
+  if (!isAuthenticated && !isPublicRoute) {
+    return <Navigate to="/" replace />;
+  }
+
   if (!isAuthenticated) {
-    if (showLanding) {
-      return <Landing onGetStarted={() => setShowLanding(false)} />;
-    }
-    return <Login setIsAuthenticated={setIsAuthenticated} onBackToLanding={() => setShowLanding(true)} />;
+    return (
+      <AnimatePresence mode="wait">
+        <Routes>
+          <Route path="/" element={<Landing />} />
+          <Route path="/features" element={<PublicFeatures />} />
+          <Route path="/pricing" element={<Pricing />} />
+          <Route path="/affiliate" element={<Affiliate />} />
+          <Route path="/login" element={<Login setIsAuthenticated={setIsAuthenticated} />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </AnimatePresence>
+    );
   }
 
   return (
@@ -90,6 +110,7 @@ function App() {
             <Route path="/billing" element={<Billing />} />
             
             {/* Common Routes */}
+            <Route path="/dashboard-features" element={<Features />} />
             <Route path="/time-clock" element={<TimeClock />} />
             <Route path="/sales" element={<Sales />} />
             <Route path="/inventory" element={<Inventory />} />

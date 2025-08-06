@@ -300,6 +300,15 @@ const Menu = () => {
                 <span className="text-sm text-gray-600">Profit Margin:</span>
                 <span className="font-medium text-purple-600">{profitMargin(item)}%</span>
               </div>
+              
+              {item.cost && (
+                <div className="flex items-center justify-between pt-2 border-t border-gray-100">
+                  <span className="text-xs text-gray-500">Cost Updated</span>
+                  <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full">
+                    Recipe Sync Available
+                  </span>
+                </div>
+              )}
             </div>
           </motion.div>
         ))}

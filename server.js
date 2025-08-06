@@ -53,6 +53,7 @@ app.use('/api/dashboard', require('./routes/dashboard'));
 app.use('/api/orders', require('./routes/orders'));
 app.use('/api/menu', require('./routes/menu'));
 app.use('/api/inventory', require('./routes/inventory'));
+app.use('/api/recipes', require('./routes/recipes'));
 
 // Healthcare routes
 app.use('/api/appointments', require('./routes/appointments'));
@@ -95,6 +96,7 @@ app.get('/api', (req, res) => {
       appointments: '/api/appointments',
       inventory: '/api/inventory',
       menu: '/api/menu',
+      recipes: '/api/recipes',
       health: '/api/health'
     }
   });

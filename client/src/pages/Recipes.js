@@ -1,13 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { BookOpen, Plus, Edit, Trash2, Calculator, Clock } from 'lucide-react';
+import { BookOpen, Plus, Edit, Trash2, Calculator, Clock, Link, Utensils } from 'lucide-react';
 import toast from 'react-hot-toast';
+import axios from 'axios';
 import { formatPeso } from '../utils/currency';
 
 const Recipes = () => {
   const [recipes, setRecipes] = useState([]);
+  const [menuItems, setMenuItems] = useState([]);
   const [showModal, setShowModal] = useState(false);
+  const [showSyncModal, setShowSyncModal] = useState(false);
   const [editingRecipe, setEditingRecipe] = useState(null);
+  const [selectedRecipe, setSelectedRecipe] = useState(null);
+
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -19,23 +24,28 @@ const Recipes = () => {
     ingredients: []
   });
 
-  const user = JSON.parse(localStorage.getItem('user') || '{}');
-
   useEffect(() => {
     loadRecipes();
-// eslint-disable-next-line react-hooks/exhaustive-deps
+    loadMenuItems();
   }, []);
 
-  const loadRecipes = () => {
-    const savedRecipes = localStorage.getItem(`recipes_${user.id}`);
-    if (savedRecipes) {
-      setRecipes(JSON.parse(savedRecipes));
+  const loadRecipes = async () => {
+    try {
+      const response = await axios.get('/api/recipes');
+      setRecipes(response.data);
+    } catch (error) {
+      console.error('Error loading recipes:', error);
+      toast.error('Failed to load recipes');
     }
   };
 
-  const saveRecipes = (newRecipes) => {
-    localStorage.setItem(`recipes_${user.id}`, JSON.stringify(newRecipes));
-    setRecipes(newRecipes);
+  const loadMenuItems = async () => {
+    try {
+      const response = await axios.get('/api/products?industry=food-beverage');
+      setMenuItems(response.data);
+    } catch (error) {
+      console.error('Error loading menu items:', error);
+    }
   };
 
   const addIngredient = () => {
@@ -70,7 +80,7 @@ const Recipes = () => {
     return totalCost / servings;
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     
     if (!formData.name || !formData.category || !formData.servings) {
@@ -83,29 +93,34 @@ const Recipes = () => {
       return;
     }
 
-    const recipe = {
-      id: editingRecipe ? editingRecipe.id : Date.now(),
-      ...formData,
-      servings: parseInt(formData.servings),
-      prepTime: parseInt(formData.prepTime) || 0,
-      cookTime: parseInt(formData.cookTime) || 0,
-      totalCost: calculateRecipeCost(),
-      costPerServing: calculateCostPerServing(),
-      createdAt: editingRecipe ? editingRecipe.createdAt : new Date().toISOString(),
-      updatedAt: new Date().toISOString()
-    };
+    try {
+      const recipeData = {
+        ...formData,
+        servings: parseInt(formData.servings),
+        prepTime: parseInt(formData.prepTime) || 0,
+        cookTime: parseInt(formData.cookTime) || 0,
+        ingredients: formData.ingredients.map(ing => ({
+          ...ing,
+          quantity: parseFloat(ing.quantity) || 0,
+          cost: parseFloat(ing.cost) || 0
+        }))
+      };
 
-    let newRecipes;
-    if (editingRecipe) {
-      newRecipes = recipes.map(r => r.id === editingRecipe.id ? recipe : r);
-      toast.success('Recipe updated successfully');
-    } else {
-      newRecipes = [recipe, ...recipes];
-      toast.success('Recipe added successfully');
+      if (editingRecipe) {
+        const response = await axios.put(`/api/recipes/${editingRecipe.id}`, recipeData);
+        setRecipes(recipes.map(r => r.id === editingRecipe.id ? response.data : r));
+        toast.success('Recipe updated successfully');
+      } else {
+        const response = await axios.post('/api/recipes', recipeData);
+        setRecipes([response.data, ...recipes]);
+        toast.success('Recipe added successfully');
+      }
+
+      resetForm();
+    } catch (error) {
+      console.error('Error saving recipe:', error);
+      toast.error('Failed to save recipe');
     }
-
-    saveRecipes(newRecipes);
-    resetForm();
   };
 
   const handleEdit = (recipe) => {
@@ -123,11 +138,40 @@ const Recipes = () => {
     setShowModal(true);
   };
 
-  const handleDelete = (recipeId) => {
+  const handleDelete = async (recipeId) => {
     if (window.confirm('Are you sure you want to delete this recipe?')) {
-      const newRecipes = recipes.filter(r => r.id !== recipeId);
-      saveRecipes(newRecipes);
-      toast.success('Recipe deleted successfully');
+      try {
+        await axios.delete(`/api/recipes/${recipeId}`);
+        setRecipes(recipes.filter(r => r.id !== recipeId));
+        toast.success('Recipe deleted successfully');
+      } catch (error) {
+        console.error('Error deleting recipe:', error);
+        toast.error('Failed to delete recipe');
+      }
+    }
+  };
+
+  const handleSyncToMenu = (recipe) => {
+    setSelectedRecipe(recipe);
+    setShowSyncModal(true);
+  };
+
+  const syncCostToMenuItem = async (menuItemId) => {
+    try {
+      // Update the menu item's cost with the recipe cost
+      await axios.put(`/api/products/${menuItemId}`, {
+        cost: selectedRecipe.costPerServing
+      });
+      
+      // Refresh menu items
+      await loadMenuItems();
+      
+      toast.success(`Recipe cost synced to menu item successfully!`);
+      setShowSyncModal(false);
+      setSelectedRecipe(null);
+    } catch (error) {
+      console.error('Error syncing cost:', error);
+      toast.error('Failed to sync cost to menu item');
     }
   };
 
@@ -255,6 +299,13 @@ const Recipes = () => {
                 </div>
                 
                 <div className="flex gap-1">
+                  <button
+                    onClick={() => handleSyncToMenu(recipe)}
+                    className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors"
+                    title="Sync cost to menu item"
+                  >
+                    <Link size={16} />
+                  </button>
                   <button
                     onClick={() => handleEdit(recipe)}
                     className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
@@ -526,6 +577,80 @@ const Recipes = () => {
                 </button>
               </div>
             </form>
+          </motion.div>
+        </div>
+      )}
+
+      {/* Sync to Menu Modal */}
+      {showSyncModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-white rounded-xl p-6 w-full max-w-lg mx-4"
+          >
+            <div className="flex items-center gap-3 mb-6">
+              <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
+                <Utensils className="text-green-600" size={20} />
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900">Sync Recipe Cost to Menu</h3>
+                <p className="text-sm text-gray-600">
+                  Update menu item cost with recipe: {selectedRecipe?.name}
+                </p>
+              </div>
+            </div>
+
+            <div className="mb-4 p-4 bg-green-50 rounded-lg">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm font-medium text-gray-700">Recipe Cost per Serving:</span>
+                <span className="text-lg font-bold text-green-600">
+                  {selectedRecipe && formatPeso(selectedRecipe.costPerServing)}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-gray-600">Total Recipe Cost:</span>
+                <span className="text-sm text-gray-900">
+                  {selectedRecipe && formatPeso(selectedRecipe.totalCost)}
+                </span>
+              </div>
+            </div>
+
+            <div className="mb-6">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Select Menu Item to Update:
+              </label>
+              <div className="space-y-2 max-h-40 overflow-y-auto">
+                {menuItems.map(item => (
+                  <button
+                    key={item._id}
+                    onClick={() => syncCostToMenuItem(item._id)}
+                    className="w-full flex items-center justify-between p-3 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors text-left"
+                  >
+                    <div>
+                      <div className="font-medium text-gray-900">{item.name}</div>
+                      <div className="text-sm text-gray-500">{item.category}</div>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-sm text-gray-600">Current cost:</div>
+                      <div className="font-medium text-gray-900">{formatPeso(item.cost || 0)}</div>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => {
+                  setShowSyncModal(false);
+                  setSelectedRecipe(null);
+                }}
+                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+            </div>
           </motion.div>
         </div>
       )}

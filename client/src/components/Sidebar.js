@@ -18,15 +18,21 @@ import {
   Building,
   Stethoscope,
   ShoppingBag,
+
+  Layers,
   Heart,
   Activity,
   Store,
   Pill,
-  Settings
+  Settings,
+  ChevronDown,
+  ChevronRight,
+  BarChart3
 } from 'lucide-react';
 
 const Sidebar = () => {
   const [user, setUser] = useState(null);
+  const [collapsedSections, setCollapsedSections] = useState({});
 
   useEffect(() => {
     const userData = localStorage.getItem('user');
@@ -35,7 +41,14 @@ const Sidebar = () => {
     }
   }, []);
 
-    const getMenuItems = () => {
+    const toggleSection = (sectionId) => {
+    setCollapsedSections(prev => ({
+      ...prev,
+      [sectionId]: !prev[sectionId]
+    }));
+  };
+
+  const getMenuSections = () => {
     const industry = user?.industry || 'food-beverage';
     const userRole = user?.role || 'employee';
     const userType = user?.userType || 'employee';
@@ -43,107 +56,172 @@ const Sidebar = () => {
     // Super Admin gets special menu
     if (userType === 'super-admin') {
       return [
-        { path: '/super-admin', icon: Shield, label: 'Super Admin' },
-        { path: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
+        {
+          id: 'super-admin',
+          type: 'single',
+          path: '/super-admin',
+          icon: Shield,
+          label: 'Super Admin'
+        },
+        {
+          id: 'dashboard',
+          type: 'single',
+          path: '/dashboard',
+          icon: LayoutDashboard,
+          label: 'Dashboard'
+        }
       ];
     }
 
-    // Base items available to all users
-    let baseItems = [
-      { path: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
-      { path: '/time-clock', icon: Clock, label: 'Time Clock' },
+    const sections = [
+      // Dashboard (always visible)
+      {
+        id: 'dashboard',
+        type: 'group',
+        icon: BarChart3,
+        label: 'Dashboard',
+        items: [
+          { path: '/dashboard', icon: LayoutDashboard, label: 'Overview' },
+          { path: '/features', icon: Layers, label: 'Features' }
+        ]
+      }
     ];
 
-    // Business Admin features
-    if (userType === 'business-admin') {
-      baseItems.push(
-        { path: '/employee-management', icon: Users, label: 'Employees' },
+    // POS System section
+    const posItems = [];
+    if (industry === 'food-beverage') {
+      posItems.push(
+        { path: '/pos', icon: ShoppingCart, label: 'POS System', roles: ['employee', 'manager', 'admin'] },
+        { path: '/order-queue', icon: ChefHat, label: 'Order Queue', roles: ['employee', 'manager', 'admin'] },
+        { path: '/menu', icon: Utensils, label: 'Menu', roles: ['manager', 'admin'] },
+        { path: '/recipes', icon: BookOpen, label: 'Recipes & Costing', roles: ['manager', 'admin'] }
+      );
+    } else if (industry === 'retail') {
+      posItems.push(
+        { path: '/pos', icon: ShoppingCart, label: 'POS System', roles: ['employee', 'manager', 'admin'] },
+        { path: '/orders', icon: ShoppingBag, label: 'Orders', roles: ['employee', 'manager', 'admin'] },
+        { path: '/customers', icon: Users, label: 'Customers', roles: ['employee', 'manager', 'admin'] }
+      );
+    } else if (industry === 'healthcare') {
+      posItems.push(
+        { path: '/appointments', icon: Activity, label: 'Appointments', roles: ['employee', 'manager', 'admin'] },
+        { path: '/patients', icon: Heart, label: 'Patients', roles: ['employee', 'manager', 'admin'] },
+        { path: '/treatments', icon: Stethoscope, label: 'Treatments', roles: ['employee', 'manager', 'admin'] },
+        { path: '/prescriptions', icon: Pill, label: 'Prescriptions', roles: ['manager', 'admin'] },
+        { path: '/billing', icon: DollarSign, label: 'Billing', roles: ['manager', 'admin'] }
       );
     }
 
-    // Management features  
-    if (userRole === 'admin' || userRole === 'manager' || userType === 'business-admin') {
-      baseItems.push(
-        { path: '/sales', icon: TrendingUp, label: 'Sales' },
-        { path: '/expenses', icon: DollarSign, label: 'Expenses' },
-        { path: '/payroll', icon: Users, label: 'Payroll' },
-        { path: '/reports', icon: FileText, label: 'Reports' }
-      );
+    // Filter POS items by role
+    const filteredPosItems = posItems.filter(item => 
+      !item.roles || item.roles.includes(userRole) || userType === 'business-admin'
+    );
+
+    if (filteredPosItems.length > 0) {
+      sections.push({
+        id: 'pos',
+        type: 'group',
+        icon: ShoppingCart,
+        label: industry === 'healthcare' ? 'Patient Management' : 'POS System',
+        items: filteredPosItems
+      });
     }
 
-    // Admin/Business Admin features
-    if (userRole === 'admin' || userType === 'business-admin') {
-      baseItems.push(
-        { path: '/admin', icon: Shield, label: 'Admin' }
+    // Inventory Management section
+    const inventoryItems = [];
+    if (industry === 'food-beverage' || industry === 'retail') {
+      inventoryItems.push(
+        { path: '/inventory', icon: Package, label: 'Inventory', roles: ['manager', 'admin'] }
       );
-    }
-
-    // Industry-specific items with role-based filtering
-    const getIndustryItems = (industry) => {
-      const allItems = {
-        'food-beverage': [
-          { path: '/pos', icon: ShoppingCart, label: 'POS System', roles: ['employee', 'manager', 'admin'] },
-          { path: '/order-queue', icon: ChefHat, label: 'Order Queue', roles: ['employee', 'manager', 'admin'] },
-          { path: '/menu', icon: Utensils, label: 'Menu', roles: ['manager', 'admin'] },
-          { path: '/inventory', icon: Package, label: 'Inventory', roles: ['manager', 'admin'] },
-          { path: '/recipes', icon: BookOpen, label: 'Recipes & Costing', roles: ['manager', 'admin'] },
-        ],
-        'retail': [
-          { path: '/pos', icon: ShoppingCart, label: 'POS System', roles: ['employee', 'manager', 'admin'] },
-          { path: '/products', icon: Store, label: 'Products', roles: ['manager', 'admin'] },
-          { path: '/inventory', icon: Package, label: 'Inventory', roles: ['manager', 'admin'] },
-          { path: '/orders', icon: ShoppingBag, label: 'Orders', roles: ['employee', 'manager', 'admin'] },
-          { path: '/customers', icon: Users, label: 'Customers', roles: ['employee', 'manager', 'admin'] },
-        ],
-        'healthcare': [
-          { path: '/appointments', icon: Activity, label: 'Appointments', roles: ['employee', 'manager', 'admin'] },
-          { path: '/patients', icon: Heart, label: 'Patients', roles: ['employee', 'manager', 'admin'] },
-          { path: '/treatments', icon: Stethoscope, label: 'Treatments', roles: ['employee', 'manager', 'admin'] },
-          { path: '/prescriptions', icon: Pill, label: 'Prescriptions', roles: ['manager', 'admin'] },
-          { path: '/billing', icon: DollarSign, label: 'Billing', roles: ['manager', 'admin'] },
-        ],
-        'manufacturing': [
-          { path: '/products', icon: Store, label: 'Products', roles: ['manager', 'admin'] },
-          { path: '/inventory', icon: Package, label: 'Inventory', roles: ['manager', 'admin'] },
-          { path: '/orders', icon: ShoppingBag, label: 'Orders', roles: ['employee', 'manager', 'admin'] },
-          { path: '/customers', icon: Users, label: 'Customers', roles: ['employee', 'manager', 'admin'] },
-        ],
-        'services': [
-          { path: '/appointments', icon: Activity, label: 'Appointments', roles: ['employee', 'manager', 'admin'] },
-          { path: '/customers', icon: Users, label: 'Customers', roles: ['employee', 'manager', 'admin'] },
-          { path: '/inventory', icon: Package, label: 'Inventory', roles: ['manager', 'admin'] },
-        ]
-      };
-
-      const items = allItems[industry] || [];
-      
-      // Business admins get access to all features for their industry
-      if (userType === 'business-admin') {
-        return items.map(item => ({
-          path: item.path,
-          icon: item.icon,
-          label: item.label
-        }));
+      if (industry === 'retail') {
+        inventoryItems.push(
+          { path: '/products', icon: Store, label: 'Products', roles: ['manager', 'admin'] }
+        );
       }
-      
-      // Regular employees/managers get role-based filtering
-      return items.filter(item => item.roles.includes(userRole)).map(item => ({
-        path: item.path,
-        icon: item.icon,
-        label: item.label
-      }));
-    };
+    }
 
-    const industrySpecific = getIndustryItems(industry);
+    const filteredInventoryItems = inventoryItems.filter(item => 
+      !item.roles || item.roles.includes(userRole) || userType === 'business-admin'
+    );
 
-    // Insert industry-specific items after dashboard
-    const menuItems = [...baseItems];
-    menuItems.splice(1, 0, ...industrySpecific);
+    if (filteredInventoryItems.length > 0) {
+      sections.push({
+        id: 'inventory',
+        type: 'group',
+        icon: Package,
+        label: 'Inventory Management',
+        items: filteredInventoryItems
+      });
+    }
 
-    return menuItems;
+    // Staff Management section
+    const staffItems = [
+      { path: '/time-clock', icon: Clock, label: 'Time Clock' }
+    ];
+
+    if (userType === 'business-admin') {
+      staffItems.push(
+        { path: '/employee-management', icon: Users, label: 'Employees' }
+      );
+    }
+
+    if (userRole === 'admin' || userRole === 'manager' || userType === 'business-admin') {
+      staffItems.push(
+        { path: '/payroll', icon: DollarSign, label: 'Payroll' }
+      );
+    }
+
+    sections.push({
+      id: 'staff',
+      type: 'group',
+      icon: Users,
+      label: 'Staff Management',
+      items: staffItems
+    });
+
+    // Financials section
+    if (userRole === 'admin' || userRole === 'manager' || userType === 'business-admin') {
+      sections.push({
+        id: 'financials',
+        type: 'group',
+        icon: TrendingUp,
+        label: 'Financials',
+        items: [
+          { path: '/sales', icon: TrendingUp, label: 'Sales' },
+          { path: '/expenses', icon: DollarSign, label: 'Expenses' },
+          { path: '/reports', icon: FileText, label: 'Reports' }
+        ]
+      });
+    }
+
+    // Features section (for admin and managers)
+    if (userRole === 'admin' || userRole === 'manager' || userType === 'business-admin') {
+      sections.push({
+        id: 'features',
+        type: 'single',
+        path: '/dashboard-features',
+        icon: Layers,
+        label: 'Features'
+      });
+    }
+
+
+
+    // Admin section
+    if (userRole === 'admin' || userType === 'business-admin') {
+      sections.push({
+        id: 'admin',
+        type: 'single',
+        path: '/admin',
+        icon: Shield,
+        label: 'Admin'
+      });
+    }
+
+    return sections;
   };
 
-  const menuItems = getMenuItems();
+  const menuSections = getMenuSections();
 
   const handleLogout = () => {
     localStorage.removeItem('token');
@@ -175,24 +253,65 @@ const Sidebar = () => {
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
-        <div className="mb-4">
-          <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">
-            Management
-          </h2>
-        </div>
-        
-        {menuItems.map((item) => (
-          <NavLink
-            key={item.path}
-            to={item.path}
-            className={({ isActive }) =>
-              `sidebar-link ${isActive ? 'active' : ''}`
-            }
-          >
-            <item.icon size={20} />
-            <span>{item.label}</span>
-          </NavLink>
+      <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
+        {menuSections.map((section) => (
+          <div key={section.id} className="mb-2">
+            {section.type === 'single' ? (
+              // Single navigation item
+              <NavLink
+                to={section.path}
+                className={({ isActive }) =>
+                  `sidebar-link ${isActive ? 'active' : ''}`
+                }
+              >
+                <section.icon size={20} />
+                <span>{section.label}</span>
+              </NavLink>
+            ) : (
+              // Grouped section with sub-items
+              <div>
+                <button
+                  onClick={() => toggleSection(section.id)}
+                  className="w-full flex items-center justify-between p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors duration-200 mb-1"
+                >
+                  <div className="flex items-center gap-3">
+                    <section.icon size={18} />
+                    <span className="font-medium text-sm">{section.label}</span>
+                  </div>
+                  {collapsedSections[section.id] ? (
+                    <ChevronRight size={16} />
+                  ) : (
+                    <ChevronDown size={16} />
+                  )}
+                </button>
+                
+                {!collapsedSections[section.id] && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    exit={{ opacity: 0, height: 0 }}
+                    transition={{ duration: 0.2 }}
+                    className="ml-6 space-y-1"
+                  >
+                    {section.items.map((item) => (
+                      <NavLink
+                        key={item.path}
+                        to={item.path}
+                        className={({ isActive }) =>
+                          `flex items-center gap-3 p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors duration-200 text-sm ${
+                            isActive ? 'bg-primary-50 text-primary-600 border-r-2 border-primary-600' : ''
+                          }`
+                        }
+                      >
+                        <item.icon size={16} />
+                        <span>{item.label}</span>
+                      </NavLink>
+                    ))}
+                  </motion.div>
+                )}
+              </div>
+            )}
+          </div>
         ))}
       </nav>
 

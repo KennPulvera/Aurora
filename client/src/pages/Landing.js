@@ -1,5 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
 import { 
   Bot, 
   BarChart3, 
@@ -8,17 +9,18 @@ import {
   Calendar, 
   TrendingUp,
   Shield,
-  Clock,
   Sparkles,
   CheckCircle,
   ArrowRight,
   Star,
   Heart,
   Store,
-  Coffee
+  Coffee,
+  Layers
 } from 'lucide-react';
 
-const Landing = ({ onGetStarted }) => {
+const Landing = () => {
+  const navigate = useNavigate();
   const features = [
     {
       icon: BarChart3,
@@ -123,14 +125,36 @@ const Landing = ({ onGetStarted }) => {
               </div>
             </motion.div>
             
-            <motion.button
+            <motion.div
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
-              onClick={onGetStarted}
-              className="bg-primary-600 hover:bg-primary-700 text-white px-6 py-2 rounded-lg font-medium transition-all duration-200 transform hover:scale-105 shadow-lg"
+              className="flex items-center gap-4"
             >
-              Get Started
-            </motion.button>
+              <button
+                onClick={() => navigate('/features')}
+                className="text-gray-700 hover:text-primary-600 px-3 py-2 rounded-lg font-medium transition-colors"
+              >
+                Features
+              </button>
+              <button
+                onClick={() => navigate('/pricing')}
+                className="text-gray-700 hover:text-primary-600 px-3 py-2 rounded-lg font-medium transition-colors"
+              >
+                Pricing
+              </button>
+              <button
+                onClick={() => navigate('/affiliate')}
+                className="text-gray-700 hover:text-primary-600 px-3 py-2 rounded-lg font-medium transition-colors"
+              >
+                Affiliate
+              </button>
+              <button
+                onClick={() => navigate('/login')}
+                className="bg-primary-600 hover:bg-primary-700 text-white px-6 py-2 rounded-lg font-medium transition-all duration-200 transform hover:scale-105 shadow-lg"
+              >
+                Get Started
+              </button>
+            </motion.div>
           </div>
         </div>
       </nav>
@@ -174,16 +198,19 @@ const Landing = ({ onGetStarted }) => {
               className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-12"
             >
               <button
-                onClick={onGetStarted}
+                onClick={() => navigate('/login')}
                 className="group bg-primary-600 hover:bg-primary-700 text-white px-8 py-4 rounded-xl font-semibold text-lg transition-all duration-200 transform hover:scale-105 shadow-xl flex items-center gap-2"
               >
                 Start Free Trial
                 <ArrowRight className="group-hover:translate-x-1 transition-transform" size={20} />
               </button>
               
-              <button className="text-gray-700 hover:text-primary-600 px-8 py-4 rounded-xl font-semibold text-lg transition-colors flex items-center gap-2">
-                <Clock size={20} />
-                Watch Demo
+              <button 
+                onClick={() => navigate('/features')}
+                className="text-gray-700 hover:text-primary-600 px-8 py-4 rounded-xl font-semibold text-lg transition-colors flex items-center gap-2"
+              >
+                <Layers size={20} />
+                View Features
               </button>
             </motion.div>
 
@@ -229,7 +256,7 @@ const Landing = ({ onGetStarted }) => {
             </p>
           </motion.div>
 
-          <div className="grid md:grid-cols-3 gap-8">
+          <div className="grid md:grid-cols-3 gap-8 mb-12">
             {industries.map((industry, index) => (
               <motion.div
                 key={industry.title}
@@ -247,6 +274,23 @@ const Landing = ({ onGetStarted }) => {
               </motion.div>
             ))}
           </div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, delay: 0.4 }}
+            viewport={{ once: true }}
+            className="text-center"
+          >
+            <button
+              onClick={() => navigate('/features')}
+              className="group bg-primary-600 hover:bg-primary-700 text-white px-8 py-4 rounded-xl font-semibold text-lg transition-all duration-200 transform hover:scale-105 shadow-xl flex items-center gap-2 mx-auto"
+            >
+              <Layers size={20} />
+              View All Industry Features
+              <ArrowRight className="group-hover:translate-x-1 transition-transform" size={20} />
+            </button>
+          </motion.div>
         </div>
       </section>
 
@@ -355,15 +399,19 @@ const Landing = ({ onGetStarted }) => {
             
             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
               <button
-                onClick={onGetStarted}
+                onClick={() => navigate('/login')}
                 className="group bg-white text-primary-600 hover:bg-gray-50 px-8 py-4 rounded-xl font-semibold text-lg transition-all duration-200 transform hover:scale-105 shadow-xl flex items-center gap-2"
               >
                 Start Your Free Trial
                 <ArrowRight className="group-hover:translate-x-1 transition-transform" size={20} />
               </button>
               
-              <button className="text-white hover:text-primary-100 px-8 py-4 rounded-xl font-semibold text-lg transition-colors flex items-center gap-2 border border-white/20 hover:border-white/40">
-                Contact Sales
+              <button 
+                onClick={() => navigate('/features')}
+                className="text-white hover:text-primary-100 px-8 py-4 rounded-xl font-semibold text-lg transition-colors flex items-center gap-2 border border-white/20 hover:border-white/40"
+              >
+                <Layers size={20} />
+                View Features
               </button>
             </div>
             

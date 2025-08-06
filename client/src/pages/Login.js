@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
 import { Eye, EyeOff, Lock, Mail, Building, User, Upload, ArrowLeft } from 'lucide-react';
 import axios from 'axios';
 import toast from 'react-hot-toast';
@@ -9,8 +10,9 @@ import { axiosConfig } from '../config/api';
 axios.defaults.baseURL = axiosConfig.baseURL;
 axios.defaults.timeout = axiosConfig.timeout;
 
-const Login = ({ setIsAuthenticated, onBackToLanding }) => {
+const Login = ({ setIsAuthenticated }) => {
   const [isSignUp, setIsSignUp] = useState(false);
+  const navigate = useNavigate();
   const [formData, setFormData] = useState({
     username: '',
     email: '',
@@ -105,17 +107,15 @@ const Login = ({ setIsAuthenticated, onBackToLanding }) => {
         className="w-full max-w-md"
       >
         {/* Back to Landing Button */}
-        {onBackToLanding && (
-          <div className="mb-6">
-            <button
-              onClick={onBackToLanding}
-              className="flex items-center gap-2 text-gray-600 hover:text-primary-600 transition-colors group"
-            >
-              <ArrowLeft size={20} className="group-hover:-translate-x-1 transition-transform" />
-              Back to Home
-            </button>
-          </div>
-        )}
+        <div className="mb-6">
+          <button
+            onClick={() => navigate('/')}
+            className="flex items-center gap-2 text-gray-600 hover:text-primary-600 transition-colors group"
+          >
+            <ArrowLeft size={20} className="group-hover:-translate-x-1 transition-transform" />
+            Back to Home
+          </button>
+        </div>
 
         {/* Logo and Title */}
         <div className="text-center mb-8">
