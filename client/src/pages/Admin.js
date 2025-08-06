@@ -10,7 +10,6 @@ import {
   Store, 
   Coffee,
   Activity,
-  Stethoscope,
   BarChart3,
   Database
 } from 'lucide-react';
