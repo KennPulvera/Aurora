@@ -83,11 +83,6 @@ const Admin = () => {
             axios.get('/api/appointments')
           );
           break;
-        case 'services':
-          promises.push(
-            axios.get('/api/appointments')
-          );
-          break;
         default:
           promises.push(
             axios.get(`/api/products?industry=${selectedIndustry}`),
@@ -108,19 +103,6 @@ const Admin = () => {
           totalPatients: patients.length,
           activePatients: patients.filter(p => p.isActive).length,
           totalAppointments: appointments.length,
-          todayAppointments: appointments.filter(apt => {
-            const today = new Date().toISOString().split('T')[0];
-            const aptDate = new Date(apt.date).toISOString().split('T')[0];
-            return aptDate === today;
-          }).length
-        };
-      } else if (selectedIndustry === 'services') {
-        const appointments = responses[0]?.data || [];
-        
-        newStats = {
-          totalAppointments: appointments.length,
-          pendingAppointments: appointments.filter(apt => apt.status === 'scheduled').length,
-          completedAppointments: appointments.filter(apt => apt.status === 'completed').length,
           todayAppointments: appointments.filter(apt => {
             const today = new Date().toISOString().split('T')[0];
             const aptDate = new Date(apt.date).toISOString().split('T')[0];
@@ -157,13 +139,6 @@ const Admin = () => {
         { title: 'Active Patients', value: stats.activePatients || 0, icon: Heart, color: 'text-green-600' },
         { title: 'Total Appointments', value: stats.totalAppointments || 0, icon: Calendar, color: 'text-purple-600' },
         { title: "Today's Appointments", value: stats.todayAppointments || 0, icon: Activity, color: 'text-orange-600' }
-      ];
-    } else if (selectedIndustry === 'services') {
-      return [
-        { title: 'Total Appointments', value: stats.totalAppointments || 0, icon: Calendar, color: 'text-blue-600' },
-        { title: 'Pending Appointments', value: stats.pendingAppointments || 0, icon: Activity, color: 'text-yellow-600' },
-        { title: 'Completed Services', value: stats.completedAppointments || 0, icon: Settings, color: 'text-green-600' },
-        { title: "Today's Schedule", value: stats.todayAppointments || 0, icon: Stethoscope, color: 'text-purple-600' }
       ];
     } else {
       return [
@@ -454,21 +429,6 @@ const Admin = () => {
                     <ShoppingCart className="text-green-600 mb-2" size={20} />
                     <div className="font-medium">View Orders</div>
                     <div className="text-sm text-gray-600">Monitor and manage orders</div>
-                  </button>
-                </>
-              )}
-
-              {selectedIndustry === 'services' && (
-                <>
-                  <button className="p-4 border border-gray-200 rounded-lg hover:bg-gray-50 text-left">
-                    <Calendar className="text-blue-600 mb-2" size={20} />
-                    <div className="font-medium">Manage Appointments</div>
-                    <div className="text-sm text-gray-600">Schedule and track services</div>
-                  </button>
-                  <button className="p-4 border border-gray-200 rounded-lg hover:bg-gray-50 text-left">
-                    <Users className="text-green-600 mb-2" size={20} />
-                    <div className="font-medium">Customer Database</div>
-                    <div className="text-sm text-gray-600">Manage customer information</div>
                   </button>
                 </>
               )}
