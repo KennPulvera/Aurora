@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Eye, EyeOff, Lock, Mail, Building, User, Upload } from 'lucide-react';
+import { Eye, EyeOff, Lock, Mail, Building, User, Upload, ArrowLeft } from 'lucide-react';
 import axios from 'axios';
 import toast from 'react-hot-toast';
 import { axiosConfig } from '../config/api';
@@ -9,7 +9,7 @@ import { axiosConfig } from '../config/api';
 axios.defaults.baseURL = axiosConfig.baseURL;
 axios.defaults.timeout = axiosConfig.timeout;
 
-const Login = ({ setIsAuthenticated }) => {
+const Login = ({ setIsAuthenticated, onBackToLanding }) => {
   const [isSignUp, setIsSignUp] = useState(false);
   const [formData, setFormData] = useState({
     username: '',
@@ -17,18 +17,41 @@ const Login = ({ setIsAuthenticated }) => {
     password: '',
     businessName: '',
     industry: '',
+    subCategory: '',
     logo: null
   });
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
   const industries = [
-    { id: 'food-beverage', name: 'Food & Beverage Industry' },
-    { id: 'healthcare', name: 'Healthcare & Wellness' },
-    { id: 'retail', name: 'Retail Stores' },
-    { id: 'manufacturing', name: 'Manufacturing' },
-    { id: 'services', name: 'Professional Services' }
+    { id: 'food-beverage', name: 'Food & beverages' },
+    { id: 'healthcare', name: 'Healthcare and wellness' },
+    { id: 'retail', name: 'Retail store' }
   ];
+
+  const subCategories = {
+    'food-beverage': [
+      { id: 'cafe', name: 'Cafe' },
+      { id: 'restaurant', name: 'Restaurant' },
+      { id: 'bakery', name: 'Bakery' },
+      { id: 'bar', name: 'Bar/Pub' },
+      { id: 'fast-food', name: 'Fast Food' }
+    ],
+    'healthcare': [
+      { id: 'spa-aesthetics', name: 'Spa & Aesthetics' },
+      { id: 'dental-clinic', name: 'Dental Clinic' },
+      { id: 'medical-clinic', name: 'Medical Clinic' },
+      { id: 'pharmacy', name: 'Pharmacy' },
+      { id: 'fitness-center', name: 'Fitness Center' }
+    ],
+    'retail': [
+      { id: 'clothing-store', name: 'Clothing Store' },
+      { id: 'grocery-store', name: 'Grocery Store' },
+      { id: 'electronics-store', name: 'Electronics Store' },
+      { id: 'bookstore', name: 'Bookstore' },
+      { id: 'general-store', name: 'General Store' }
+    ]
+  };
 
   const handleChange = (e) => {
     if (e.target.type === 'file') {
@@ -37,10 +60,17 @@ const Login = ({ setIsAuthenticated }) => {
         logo: e.target.files[0]
       });
     } else {
-      setFormData({
+      const newFormData = {
         ...formData,
         [e.target.name]: e.target.value
-      });
+      };
+      
+      // Reset sub-category when industry changes
+      if (e.target.name === 'industry') {
+        newFormData.subCategory = '';
+      }
+      
+      setFormData(newFormData);
     }
   };
 
@@ -74,15 +104,28 @@ const Login = ({ setIsAuthenticated }) => {
         animate={{ opacity: 1, y: 0 }}
         className="w-full max-w-md"
       >
+        {/* Back to Landing Button */}
+        {onBackToLanding && (
+          <div className="mb-6">
+            <button
+              onClick={onBackToLanding}
+              className="flex items-center gap-2 text-gray-600 hover:text-primary-600 transition-colors group"
+            >
+              <ArrowLeft size={20} className="group-hover:-translate-x-1 transition-transform" />
+              Back to Home
+            </button>
+          </div>
+        )}
+
         {/* Logo and Title */}
         <div className="text-center mb-8">
-          <div className="w-16 h-16 bg-primary-600 rounded-xl flex items-center justify-center mx-auto mb-4">
-            <span className="text-white font-bold text-2xl">B</span>
+          <div className="w-16 h-16 bg-gradient-to-r from-primary-500 to-primary-600 rounded-xl flex items-center justify-center mx-auto mb-4">
+            <span className="text-white font-bold text-2xl">A</span>
           </div>
           <h1 className="text-2xl font-bold text-gray-900 mb-2">
-            Business Management
+            Avasolutions
           </h1>
-          <p className="text-gray-600">Sign in to your business dashboard</p>
+          <p className="text-gray-600">Your AI Business Assistant</p>
         </div>
 
         {/* Auth Form */}
@@ -211,6 +254,30 @@ const Login = ({ setIsAuthenticated }) => {
                     ))}
                   </select>
                 </div>
+
+                {/* Sub-Category Selection */}
+                {formData.industry && (
+                  <div>
+                    <label htmlFor="subCategory" className="block text-sm font-medium text-gray-700 mb-2">
+                      Business Type
+                    </label>
+                    <select
+                      id="subCategory"
+                      name="subCategory"
+                      value={formData.subCategory}
+                      onChange={handleChange}
+                      required
+                      className="block w-full py-3 px-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors"
+                    >
+                      <option value="">Select your business type</option>
+                      {subCategories[formData.industry]?.map((subCat) => (
+                        <option key={subCat.id} value={subCat.id}>
+                          {subCat.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
 
                 {/* Logo Upload */}
                 <div>

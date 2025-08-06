@@ -68,7 +68,7 @@ const orderSchema = new mongoose.Schema({
   notes: String,
   industry: {
     type: String,
-    enum: ['food-beverage', 'healthcare', 'retail', 'manufacturing', 'services'],
+    enum: ['food-beverage', 'healthcare', 'retail'],
     required: true
   },
   orderType: {

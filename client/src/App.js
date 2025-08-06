@@ -18,6 +18,7 @@ import SuperAdmin from './pages/SuperAdmin';
 import EmployeeManagement from './pages/EmployeeManagement';
 import Profile from './pages/Profile';
 import Login from './pages/Login';
+import Landing from './pages/Landing';
 
 // Healthcare pages
 import Appointments from './pages/Appointments';
@@ -34,12 +35,14 @@ import Customers from './pages/Customers';
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [showLanding, setShowLanding] = useState(true);
 
   useEffect(() => {
     // Check if user is authenticated
     const token = localStorage.getItem('token');
     if (token) {
       setIsAuthenticated(true);
+      setShowLanding(false);
     }
     setIsLoading(false);
   }, []);
@@ -53,7 +56,10 @@ function App() {
   }
 
   if (!isAuthenticated) {
-    return <Login setIsAuthenticated={setIsAuthenticated} />;
+    if (showLanding) {
+      return <Landing onGetStarted={() => setShowLanding(false)} />;
+    }
+    return <Login setIsAuthenticated={setIsAuthenticated} onBackToLanding={() => setShowLanding(true)} />;
   }
 
   return (

@@ -32,38 +32,24 @@ const Admin = () => {
   const industries = [
     { 
       id: 'food-beverage', 
-      name: 'Food & Beverage', 
+      name: 'Food & beverages', 
       icon: Coffee,
       color: 'bg-orange-500',
       features: ['Products', 'Orders', 'Order Queue', 'Menu Management']
     },
     { 
       id: 'healthcare', 
-      name: 'Healthcare', 
+      name: 'Healthcare and wellness', 
       icon: Heart,
       color: 'bg-red-500',
       features: ['Patients', 'Appointments', 'Medical Records', 'Treatments']
     },
     { 
       id: 'retail', 
-      name: 'Retail', 
+      name: 'Retail store', 
       icon: Store,
       color: 'bg-blue-500',
       features: ['Products', 'Inventory', 'Orders', 'Customers']
-    },
-    { 
-      id: 'manufacturing', 
-      name: 'Manufacturing', 
-      icon: Settings,
-      color: 'bg-gray-600',
-      features: ['Products', 'Inventory', 'Orders', 'Supply Chain']
-    },
-    { 
-      id: 'services', 
-      name: 'Services', 
-      icon: Wrench,
-      color: 'bg-green-500',
-      features: ['Appointments', 'Customers', 'Service Management']
     }
   ];
 

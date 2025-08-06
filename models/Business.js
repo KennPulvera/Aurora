@@ -8,7 +8,7 @@ const businessSchema = new mongoose.Schema({
   },
   industry: {
     type: String,
-    enum: ['food-beverage', 'healthcare', 'retail', 'manufacturing', 'services'],
+    enum: ['food-beverage', 'healthcare', 'retail'],
     required: true
   },
   logo: {

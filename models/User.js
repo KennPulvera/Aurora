@@ -38,7 +38,7 @@ const userSchema = new mongoose.Schema({
   // Legacy fields (will be moved to Business model)
   industry: {
     type: String,
-    enum: ['food-beverage', 'healthcare', 'retail', 'manufacturing', 'services'],
+    enum: ['food-beverage', 'healthcare', 'retail'],
     required: function() { return this.userType === 'business-admin'; }
   },
   businessName: {

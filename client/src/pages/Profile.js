@@ -18,6 +18,7 @@ const Profile = () => {
     email: '',
     businessName: '',
     industry: '',
+    subCategory: '',
     logo: null
   });
 
@@ -47,6 +48,7 @@ const Profile = () => {
         email: userData.email,
         businessName: userData.businessName,
         industry: userData.industry,
+        subCategory: userData.subCategory || '',
         logo: userData.logo
       });
       
@@ -165,12 +167,34 @@ const Profile = () => {
   };
 
   const industries = [
-    { id: 'food-beverage', name: 'Food & Beverage Industry' },
-    { id: 'healthcare', name: 'Healthcare & Wellness' },
-    { id: 'retail', name: 'Retail Stores' },
-    { id: 'manufacturing', name: 'Manufacturing' },
-    { id: 'services', name: 'Professional Services' }
+    { id: 'food-beverage', name: 'Food & beverages' },
+    { id: 'healthcare', name: 'Healthcare and wellness' },
+    { id: 'retail', name: 'Retail store' }
   ];
+
+  const subCategories = {
+    'food-beverage': [
+      { id: 'cafe', name: 'Cafe' },
+      { id: 'restaurant', name: 'Restaurant' },
+      { id: 'bakery', name: 'Bakery' },
+      { id: 'bar', name: 'Bar/Pub' },
+      { id: 'fast-food', name: 'Fast Food' }
+    ],
+    'healthcare': [
+      { id: 'spa-aesthetics', name: 'Spa & Aesthetics' },
+      { id: 'dental-clinic', name: 'Dental Clinic' },
+      { id: 'medical-clinic', name: 'Medical Clinic' },
+      { id: 'pharmacy', name: 'Pharmacy' },
+      { id: 'fitness-center', name: 'Fitness Center' }
+    ],
+    'retail': [
+      { id: 'clothing-store', name: 'Clothing Store' },
+      { id: 'grocery-store', name: 'Grocery Store' },
+      { id: 'electronics-store', name: 'Electronics Store' },
+      { id: 'bookstore', name: 'Bookstore' },
+      { id: 'general-store', name: 'General Store' }
+    ]
+  };
 
   if (loading) {
     return (
@@ -326,10 +350,11 @@ const Profile = () => {
                 </label>
                 <select
                   value={profileData.industry}
-                  onChange={(e) => setProfileData({...profileData, industry: e.target.value})}
+                  onChange={(e) => setProfileData({...profileData, industry: e.target.value, subCategory: ''})}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                   required
                 >
+                  <option value="">Select your industry</option>
                   {industries.map(industry => (
                     <option key={industry.id} value={industry.id}>
                       {industry.name}
@@ -337,6 +362,27 @@ const Profile = () => {
                   ))}
                 </select>
               </div>
+
+              {profileData.industry && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Business Type
+                  </label>
+                  <select
+                    value={profileData.subCategory}
+                    onChange={(e) => setProfileData({...profileData, subCategory: e.target.value})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                    required
+                  >
+                    <option value="">Select your business type</option>
+                    {subCategories[profileData.industry]?.map((subCat) => (
+                      <option key={subCat.id} value={subCat.id}>
+                        {subCat.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
             </div>
 
             <div className="flex justify-end">
