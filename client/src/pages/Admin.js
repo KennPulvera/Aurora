@@ -8,11 +8,9 @@ import {
   Heart, 
   Calendar, 
   Store, 
-  Wrench, 
   Coffee,
   Activity,
   Stethoscope,
-  Settings,
   BarChart3,
   Database
 } from 'lucide-react';
