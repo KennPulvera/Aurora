@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Utensils, Plus, Edit, Trash2, Eye, EyeOff } from 'lucide-react';
-import axios from 'axios';
+// import axios from 'axios'; // Not used with localStorage implementation
 import toast from 'react-hot-toast';
 import { formatPeso } from '../utils/currency';
 
@@ -30,8 +30,66 @@ const Menu = () => {
 
   const fetchMenuItems = async () => {
     try {
-      const response = await axios.get(`/api/products?industry=food-beverage`);
-      setMenuItems(response.data);
+      // First try to load from localStorage
+      const savedMenu = localStorage.getItem('menuItems');
+      
+      if (savedMenu) {
+        const menuData = JSON.parse(savedMenu);
+        setMenuItems(menuData);
+        setLoading(false);
+        return;
+      }
+      
+      // Initialize with sample menu data if none exists
+      const sampleMenu = [
+        {
+          id: 1,
+          name: 'Americano',
+          description: 'Rich, bold espresso with hot water',
+          category: 'Coffee',
+          price: 123.00,
+          cost: 60.00,
+          isAvailable: true,
+          preparationTime: 3,
+          ingredients: 'Espresso beans, Hot water'
+        },
+        {
+          id: 2,
+          name: 'Latte',
+          description: 'Espresso with steamed milk and foam',
+          category: 'Coffee',
+          price: 150.00,
+          cost: 75.00,
+          isAvailable: true,
+          preparationTime: 4,
+          ingredients: 'Espresso beans, Milk, Foam'
+        },
+        {
+          id: 3,
+          name: 'Croissant',
+          description: 'Buttery, flaky pastry',
+          category: 'Pastry',
+          price: 85.00,
+          cost: 45.00,
+          isAvailable: true,
+          preparationTime: 2,
+          ingredients: 'Flour, Butter, Yeast'
+        },
+        {
+          id: 4,
+          name: 'Cappuccino',
+          description: 'Espresso with steamed milk and thick foam',
+          category: 'Coffee',
+          price: 140.00,
+          cost: 70.00,
+          isAvailable: true,
+          preparationTime: 4,
+          ingredients: 'Espresso beans, Milk'
+        }
+      ];
+      
+      localStorage.setItem('menuItems', JSON.stringify(sampleMenu));
+      setMenuItems(sampleMenu);
     } catch (error) {
       console.error('Error fetching menu items:', error);
       toast.error('Failed to load menu items');
@@ -53,15 +111,28 @@ const Menu = () => {
         minStockLevel: 0
       };
 
+      const currentMenu = JSON.parse(localStorage.getItem('menuItems') || '[]');
+      
       if (editingItem) {
-        await axios.put(`/api/products/${editingItem._id}`, itemData);
+        // Update existing item
+        const updatedMenu = currentMenu.map(item => 
+          item.id === editingItem.id ? { ...itemData, id: editingItem.id } : item
+        );
+        localStorage.setItem('menuItems', JSON.stringify(updatedMenu));
+        setMenuItems(updatedMenu);
         toast.success('Menu item updated successfully');
       } else {
-        await axios.post('/api/products', itemData);
+        // Add new item
+        const newItem = {
+          ...itemData,
+          id: Date.now() // Simple ID generation
+        };
+        const updatedMenu = [...currentMenu, newItem];
+        localStorage.setItem('menuItems', JSON.stringify(updatedMenu));
+        setMenuItems(updatedMenu);
         toast.success('Menu item added successfully');
       }
 
-      fetchMenuItems();
       resetForm();
     } catch (error) {
       console.error('Error saving menu item:', error);
@@ -87,9 +158,11 @@ const Menu = () => {
   const handleDelete = async (itemId) => {
     if (window.confirm('Are you sure you want to remove this menu item?')) {
       try {
-        await axios.delete(`/api/products/${itemId}`);
+        const currentMenu = JSON.parse(localStorage.getItem('menuItems') || '[]');
+        const updatedMenu = currentMenu.filter(item => item.id !== itemId);
+        localStorage.setItem('menuItems', JSON.stringify(updatedMenu));
+        setMenuItems(updatedMenu);
         toast.success('Menu item removed successfully');
-        fetchMenuItems();
       } catch (error) {
         console.error('Error deleting menu item:', error);
         toast.error('Failed to remove menu item');
@@ -99,12 +172,15 @@ const Menu = () => {
 
   const toggleAvailability = async (item) => {
     try {
-      await axios.put(`/api/products/${item._id}`, {
-        ...item,
-        isActive: !item.isActive
-      });
-      toast.success(`Menu item ${item.isActive ? 'hidden' : 'shown'}`);
-      fetchMenuItems();
+      const currentMenu = JSON.parse(localStorage.getItem('menuItems') || '[]');
+      const updatedMenu = currentMenu.map(menuItem => 
+        menuItem.id === item.id 
+          ? { ...menuItem, isAvailable: !menuItem.isAvailable }
+          : menuItem
+      );
+      localStorage.setItem('menuItems', JSON.stringify(updatedMenu));
+      setMenuItems(updatedMenu);
+      toast.success(`Menu item ${item.isAvailable ? 'hidden' : 'shown'}`);
     } catch (error) {
       console.error('Error updating availability:', error);
       toast.error('Failed to update availability');
@@ -277,7 +353,7 @@ const Menu = () => {
                   <Edit size={16} />
                 </button>
                 <button
-                  onClick={() => handleDelete(item._id)}
+                                            onClick={() => handleDelete(item.id)}
                   className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                 >
                   <Trash2 size={16} />

@@ -1,9 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Package, AlertTriangle, TrendingUp, Search, Plus, Minus, Edit } from 'lucide-react';
-import axios from 'axios';
+import { 
+  Package, AlertTriangle, Search, Plus, Minus, Edit,
+  DollarSign, Calculator, BarChart3, RefreshCw 
+} from 'lucide-react';
 import toast from 'react-hot-toast';
 import { formatPeso } from '../utils/currency';
+// Removed complex financial utils - using direct localStorage now
 
 const Inventory = () => {
   const [products, setProducts] = useState([]);
@@ -15,26 +18,112 @@ const Inventory = () => {
   const [stockAdjustment, setStockAdjustment] = useState({
     type: 'add',
     quantity: '',
-    reason: ''
+    reason: '',
+    cost: ''
+  });
+  // const [showCostModal, setShowCostModal] = useState(false); // Reserved for future use
+  const [inventoryMetrics, setInventoryMetrics] = useState({
+    totalValue: 0,
+    lowStockItems: 0,
+    profitMargin: 0
   });
 
   const user = JSON.parse(localStorage.getItem('user') || '{}');
 
   useEffect(() => {
     fetchProducts();
+    calculateMetrics();
+    
+    // Listen for financial updates
+    const handleFinancialUpdate = () => {
+      fetchProducts();
+      calculateMetrics();
+    };
+    
+    window.addEventListener('financialUpdate', handleFinancialUpdate);
+    
+    return () => {
+      window.removeEventListener('financialUpdate', handleFinancialUpdate);
+    };
 // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const fetchProducts = async () => {
     try {
-      const response = await axios.get(`/api/products?industry=${user.industry}`);
-      setProducts(response.data);
+      // For now, use localStorage with enhanced product data
+      const savedProducts = localStorage.getItem(`inventory_${user.id}`);
+      let products = [];
+      
+      if (savedProducts) {
+        products = JSON.parse(savedProducts);
+      } else {
+        // Initialize with sample products that have cost and pricing data
+        products = [
+          {
+            id: 1,
+            name: 'Americano',
+            category: 'Coffee',
+            quantity: 50,
+            cost: 60.00,  // Cost per unit
+            price: 123.00, // Selling price
+            lowStockThreshold: 10,
+            description: 'Premium coffee beans'
+          },
+          {
+            id: 2,
+            name: 'Croissant',
+            category: 'Pastry',
+            quantity: 30,
+            cost: 45.00,
+            price: 85.00,
+            lowStockThreshold: 5,
+            description: 'Fresh baked pastry'
+          },
+          {
+            id: 3,
+            name: 'Latte',
+            category: 'Coffee',
+            quantity: 40,
+            cost: 75.00,
+            price: 150.00,
+            lowStockThreshold: 8,
+            description: 'Coffee with steamed milk'
+          }
+        ];
+        localStorage.setItem(`inventory_${user.id}`, JSON.stringify(products));
+      }
+      
+      setProducts(products);
     } catch (error) {
       console.error('Error fetching products:', error);
       toast.error('Failed to load inventory');
     } finally {
       setLoading(false);
     }
+  };
+
+  const calculateMetrics = () => {
+    // Calculate inventory value directly
+    const totalValue = products.reduce((sum, product) => 
+      sum + ((product.price || 0) * (product.quantity || 0)), 0
+    );
+    const lowStockItems = products.filter(p => p.quantity <= (p.lowStockThreshold || 5)).length;
+    
+    // Calculate average profit margin
+    const avgProfitMargin = products.length > 0 
+      ? products.reduce((sum, product) => {
+          const margin = product.cost && product.price 
+            ? ((product.price - product.cost) / product.price) * 100 
+            : 0;
+          return sum + margin;
+        }, 0) / products.length
+      : 0;
+    
+    setInventoryMetrics({
+      totalValue,
+      lowStockItems,
+      profitMargin: avgProfitMargin
+    });
   };
 
   const handleStockAdjustment = async () => {
@@ -47,15 +136,56 @@ const Inventory = () => {
       const adjustmentAmount = stockAdjustment.type === 'add' 
         ? parseInt(stockAdjustment.quantity)
         : -parseInt(stockAdjustment.quantity);
+      
+      const costPerUnit = parseFloat(stockAdjustment.cost) || selectedProduct.cost || 0;
 
-      await axios.patch(`/api/products/${selectedProduct._id}/stock`, {
-        quantity: selectedProduct.stockQuantity + adjustmentAmount
-      });
+      // Update local inventory
+      const updatedProducts = products.map(product =>
+        product.id === selectedProduct.id
+          ? { 
+              ...product, 
+              quantity: product.quantity + adjustmentAmount,
+              cost: costPerUnit || product.cost // Update cost if provided
+            }
+          : product
+      );
+      
+      setProducts(updatedProducts);
+      localStorage.setItem(`inventory_${user.id}`, JSON.stringify(updatedProducts));
 
-      toast.success('Stock updated successfully');
-      fetchProducts();
+      // Record expense if adding stock (restocking)
+      if (stockAdjustment.type === 'add' && costPerUnit > 0) {
+        const totalCost = costPerUnit * parseInt(stockAdjustment.quantity);
+        const expense = {
+          id: Date.now(),
+          description: `Restocked ${selectedProduct.name} (${stockAdjustment.quantity} units)`,
+          amount: totalCost,
+          category: 'Inventory/Stock',
+          date: new Date().toISOString().split('T')[0],
+          notes: stockAdjustment.reason,
+          productId: selectedProduct.id,
+          type: 'inventory_restock'
+        };
+        
+        // Save expense directly to localStorage
+        const user = JSON.parse(localStorage.getItem('user') || '{}');
+        const currentExpenses = JSON.parse(localStorage.getItem(`expenses_${user.id}`) || '[]');
+        currentExpenses.push(expense);
+        localStorage.setItem(`expenses_${user.id}`, JSON.stringify(currentExpenses));
+        
+        toast.success(`Stock added & expense recorded: ${formatPeso(totalCost)}`);
+      } else {
+        toast.success(`Stock ${stockAdjustment.type === 'add' ? 'added' : 'removed'} successfully`);
+      }
+
+      // Trigger financial update event
+      window.dispatchEvent(new CustomEvent('financialUpdate', { 
+        detail: { type: 'inventoryUpdate' }
+      }));
+      calculateMetrics();
+      
       setShowStockModal(false);
-      setStockAdjustment({ type: 'add', quantity: '', reason: '' });
+      setStockAdjustment({ type: 'add', quantity: '', reason: '', cost: '' });
     } catch (error) {
       console.error('Error updating stock:', error);
       toast.error('Failed to update stock');
@@ -77,9 +207,10 @@ const Inventory = () => {
     return matchesSearch && matchesCategory && product.isActive;
   });
 
-  const lowStockProducts = products.filter(p => p.stockQuantity <= p.minStockLevel);
-  const outOfStockProducts = products.filter(p => p.stockQuantity === 0);
-  const totalValue = products.reduce((sum, p) => sum + (p.price * p.stockQuantity), 0);
+  // Legacy variables - now calculated in metrics
+  // const lowStockProducts = products.filter(p => p.stockQuantity <= p.minStockLevel);
+  // const outOfStockProducts = products.filter(p => p.stockQuantity === 0);
+  // const totalValue = products.reduce((sum, p) => sum + (p.price * p.stockQuantity), 0);
 
   if (loading) {
     return (
@@ -98,25 +229,40 @@ const Inventory = () => {
       animate={{ opacity: 1, y: 0 }}
       className="p-6"
     >
-      <div className="flex items-center gap-3 mb-6">
-        <div className="w-10 h-10 bg-primary-100 rounded-lg flex items-center justify-center">
-          <Package className="text-primary-600" size={20} />
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 bg-primary-100 rounded-lg flex items-center justify-center">
+            <Package className="text-primary-600" size={20} />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">Inventory Management</h1>
+            <p className="text-gray-600">
+              Track stock, costs & profit margins with expense integration
+            </p>
+          </div>
         </div>
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Inventory Management</h1>
-          <p className="text-gray-600">Track and manage your stock levels</p>
-        </div>
+        <button
+          onClick={() => {
+            fetchProducts();
+            calculateMetrics();
+          }}
+          className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
+        >
+          <RefreshCw size={16} />
+          Refresh
+        </button>
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
+      {/* Enhanced Stats Cards with Profit Margins */}
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-6 mb-6">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-white p-6 rounded-xl border border-gray-200"
+          className="bg-gradient-to-br from-blue-50 to-blue-100 p-6 rounded-xl border border-blue-200"
         >
           <div className="flex items-center justify-between mb-2">
             <Package className="text-blue-600" size={24} />
+            <span className="text-sm text-blue-600 font-medium">Items</span>
           </div>
           <div className="text-2xl font-bold text-gray-900 mb-1">{products.length}</div>
           <div className="text-sm text-gray-600">Total Products</div>
@@ -126,39 +272,56 @@ const Inventory = () => {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
-          className="bg-white p-6 rounded-xl border border-gray-200"
+          className="bg-gradient-to-br from-green-50 to-green-100 p-6 rounded-xl border border-green-200"
         >
           <div className="flex items-center justify-between mb-2">
-            <AlertTriangle className="text-yellow-600" size={24} />
+            <DollarSign className="text-green-600" size={24} />
+            <span className="text-sm text-green-600 font-medium">Value</span>
           </div>
-          <div className="text-2xl font-bold text-gray-900 mb-1">{lowStockProducts.length}</div>
-          <div className="text-sm text-gray-600">Low Stock Items</div>
+          <div className="text-2xl font-bold text-gray-900 mb-1">{formatPeso(inventoryMetrics.totalValue)}</div>
+          <div className="text-sm text-gray-600">Inventory Value</div>
         </motion.div>
 
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
-          className="bg-white p-6 rounded-xl border border-gray-200"
+          className="bg-gradient-to-br from-purple-50 to-purple-100 p-6 rounded-xl border border-purple-200"
         >
           <div className="flex items-center justify-between mb-2">
-            <AlertTriangle className="text-red-600" size={24} />
+            <Calculator className="text-purple-600" size={24} />
+            <span className="text-sm text-purple-600 font-medium">Profit</span>
           </div>
-          <div className="text-2xl font-bold text-gray-900 mb-1">{outOfStockProducts.length}</div>
-          <div className="text-sm text-gray-600">Out of Stock</div>
+          <div className="text-2xl font-bold text-gray-900 mb-1">{inventoryMetrics.profitMargin.toFixed(1)}%</div>
+          <div className="text-sm text-gray-600">Avg Profit Margin</div>
         </motion.div>
 
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.3 }}
-          className="bg-white p-6 rounded-xl border border-gray-200"
+          className="bg-gradient-to-br from-yellow-50 to-yellow-100 p-6 rounded-xl border border-yellow-200"
         >
           <div className="flex items-center justify-between mb-2">
-            <TrendingUp className="text-green-600" size={24} />
+            <AlertTriangle className="text-yellow-600" size={24} />
+            <span className="text-sm text-yellow-600 font-medium">Low Stock</span>
           </div>
-          <div className="text-2xl font-bold text-gray-900 mb-1">{formatPeso(totalValue)}</div>
-          <div className="text-sm text-gray-600">Total Value</div>
+          <div className="text-2xl font-bold text-gray-900 mb-1">{inventoryMetrics.lowStockItems}</div>
+          <div className="text-sm text-gray-600">Items Need Restock</div>
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.4 }}
+          className="bg-gradient-to-br from-gray-50 to-gray-100 p-6 rounded-xl border border-gray-200"
+        >
+          <div className="flex items-center justify-between mb-2">
+            <BarChart3 className="text-gray-600" size={24} />
+            <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+          </div>
+          <div className="text-sm font-bold text-gray-900 mb-1">CONNECTED</div>
+          <div className="text-xs text-gray-600">To Expenses &<br/>Financial System</div>
         </motion.div>
       </div>
 
@@ -216,7 +379,13 @@ const Inventory = () => {
                   Min Level
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Unit Price
+                  Cost
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Price
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Profit Margin
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Total Value
@@ -254,13 +423,31 @@ const Inventory = () => {
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {product.minStockLevel} {product.unit}
+                      {product.lowStockThreshold || 5}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {formatPeso(product.price)}
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-red-600 font-medium">
+                      {formatPeso(product.cost || 0)}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-medium">
+                      {formatPeso(product.price || 0)}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm">
+                      {product.cost && product.price ? (
+                        <span className={`font-semibold ${
+                          ((product.price - product.cost) / product.price) * 100 > 30 
+                            ? 'text-green-600' 
+                            : ((product.price - product.cost) / product.price) * 100 > 15 
+                              ? 'text-yellow-600' 
+                              : 'text-red-600'
+                        }`}>
+                          {(((product.price - product.cost) / product.price) * 100).toFixed(1)}%
+                        </span>
+                      ) : (
+                        <span className="text-gray-400">N/A</span>
+                      )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-green-600">
-                      {formatPeso(product.price * product.stockQuantity)}
+                      {formatPeso((product.price || 0) * product.quantity)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${stockStatus.bg} ${stockStatus.color}`}>
@@ -350,6 +537,25 @@ const Inventory = () => {
                   min="1"
                 />
               </div>
+
+              {stockAdjustment.type === 'add' && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Cost per Unit (for expense tracking)
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={stockAdjustment.cost}
+                    onChange={(e) => setStockAdjustment({...stockAdjustment, cost: e.target.value})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                    placeholder={`Current: ${formatPeso(selectedProduct.cost || 0)}`}
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Leave empty to use current cost. This will be recorded as an expense.
+                  </p>
+                </div>
+              )}
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">

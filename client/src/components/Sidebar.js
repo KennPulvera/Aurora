@@ -23,6 +23,7 @@ import {
   Heart,
   Activity,
   Store,
+  Receipt,
   Pill,
   Settings,
   ChevronDown,
@@ -82,7 +83,7 @@ const Sidebar = () => {
         label: 'Dashboard',
         items: [
           { path: '/dashboard', icon: LayoutDashboard, label: 'Overview' },
-          { path: '/features', icon: Layers, label: 'Features' }
+          { path: '/dashboard-features', icon: Layers, label: 'Features' }
         ]
       }
     ];
@@ -129,6 +130,8 @@ const Sidebar = () => {
 
     // Inventory Management section
     const inventoryItems = [];
+    
+    // Add industry-specific inventory items
     if (industry === 'food-beverage' || industry === 'retail') {
       inventoryItems.push(
         { path: '/inventory', icon: Package, label: 'Inventory', roles: ['manager', 'admin'] }
@@ -187,23 +190,14 @@ const Sidebar = () => {
         icon: TrendingUp,
         label: 'Financials',
         items: [
-          { path: '/sales', icon: TrendingUp, label: 'Sales' },
-          { path: '/expenses', icon: DollarSign, label: 'Expenses' },
-          { path: '/reports', icon: FileText, label: 'Reports' }
+          { path: '/sales-analytics', icon: BarChart3, label: 'Sales Analytics' },
+          { path: '/expense-tracker', icon: Receipt, label: 'Expense Tracker' },
+          { path: '/business-reports', icon: FileText, label: 'Business Reports' }
         ]
       });
     }
 
-    // Features section (for admin and managers)
-    if (userRole === 'admin' || userRole === 'manager' || userType === 'business-admin') {
-      sections.push({
-        id: 'features',
-        type: 'single',
-        path: '/dashboard-features',
-        icon: Layers,
-        label: 'Features'
-      });
-    }
+
 
 
 

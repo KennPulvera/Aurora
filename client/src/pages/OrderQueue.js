@@ -1,382 +1,497 @@
-import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
-import { Clock, CheckCircle, XCircle, AlertCircle, ChefHat, Users } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { 
+  Clock, ChefHat, Package, 
+  Timer, ArrowRight, Hash, User, DollarSign, RefreshCw 
+} from 'lucide-react';
 import axios from 'axios';
 import toast from 'react-hot-toast';
+// Removed complex financial utils - using direct localStorage now
+
+// Individual timer component that doesn't cause parent re-renders
+const OrderTimer = ({ order, type = 'badge' }) => {
+  const [currentTime, setCurrentTime] = useState(Date.now());
+  
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(Date.now());
+    }, 1000);
+    
+    return () => clearInterval(timer);
+  }, []);
+  
+  const getDuration = () => {
+    const orderTime = typeof order.timestamp === 'string' ? new Date(order.timestamp).getTime() : order.timestamp;
+    const totalSeconds = Math.floor((currentTime - orderTime) / 1000);
+    const totalMinutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    
+    if (order.status === 'preparing' && order.startedAt) {
+      const prepStartTime = typeof order.startedAt === 'string' ? new Date(order.startedAt).getTime() : order.startedAt;
+      const prepSeconds = Math.floor((currentTime - prepStartTime) / 1000);
+      const prepMinutes = Math.floor(prepSeconds / 60);
+      const prepSecs = prepSeconds % 60;
+      return `${totalMinutes}:${seconds.toString().padStart(2, '0')} total, ${prepMinutes}:${prepSecs.toString().padStart(2, '0')} preparing`;
+    }
+    
+    if (order.status === 'ready' && order.completedAt) {
+      const completedTime = typeof order.completedAt === 'string' ? new Date(order.completedAt).getTime() : order.completedAt;
+      const readySeconds = Math.floor((currentTime - completedTime) / 1000);
+      const readyMinutes = Math.floor(readySeconds / 60);
+      const readySecs = readySeconds % 60;
+      return `${totalMinutes}:${seconds.toString().padStart(2, '0')} total, ready ${readyMinutes}:${readySecs.toString().padStart(2, '0')} ago`;
+    }
+    
+    return `${totalMinutes}:${seconds.toString().padStart(2, '0')} in queue`;
+  };
+  
+  const getTimerColor = () => {
+    const orderTime = typeof order.timestamp === 'string' ? new Date(order.timestamp).getTime() : order.timestamp;
+    const totalMinutes = Math.floor((currentTime - orderTime) / (1000 * 60));
+    
+    if (order.status === 'ready') {
+      const completedTime = order.completedAt ? (typeof order.completedAt === 'string' ? new Date(order.completedAt).getTime() : order.completedAt) : orderTime;
+      const readyMinutes = Math.floor((currentTime - completedTime) / (1000 * 60));
+      if (readyMinutes > 10) return 'bg-red-100 text-red-700 border-red-200';
+      if (readyMinutes > 5) return 'bg-yellow-100 text-yellow-700 border-yellow-200';
+      return 'bg-green-100 text-green-700 border-green-200';
+    }
+    
+    if (order.status === 'preparing') {
+      const prepTime = order.startedAt ? Math.floor((currentTime - (typeof order.startedAt === 'string' ? new Date(order.startedAt).getTime() : order.startedAt)) / (1000 * 60)) : 0;
+      if (prepTime > 15) return 'bg-red-100 text-red-700 border-red-200';
+      if (prepTime > 10) return 'bg-yellow-100 text-yellow-700 border-yellow-200';
+      return 'bg-blue-100 text-blue-700 border-blue-200';
+    }
+    
+    if (totalMinutes > 10) return 'bg-red-100 text-red-700 border-red-200';
+    if (totalMinutes > 5) return 'bg-yellow-100 text-yellow-700 border-yellow-200';
+    return 'bg-gray-100 text-gray-700 border-gray-200';
+  };
+  
+  if (type === 'large') {
+    return (
+      <div className="mb-3">
+        <div className={`text-center py-2 px-3 rounded-lg border-2 transition-colors duration-300 ${getTimerColor()}`}>
+          <div className="text-xs opacity-75 mb-1">Time Elapsed</div>
+          <div className="text-lg font-mono font-bold">
+            {getDuration()}
+          </div>
+        </div>
+      </div>
+    );
+  }
+  
+  return (
+    <span className={`text-xs px-2 py-1 rounded-full border transition-colors duration-300 ${getTimerColor()}`}>
+      ⏱️ {getDuration()}
+    </span>
+  );
+};
 
 const OrderQueue = () => {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [selectedStatus, setSelectedStatus] = useState('all');
+  const [lastUpdate, setLastUpdate] = useState(new Date());
 
-  const user = JSON.parse(localStorage.getItem('user') || '{}');
+  // Debug: Log when orders state changes (disabled for production)
+  // useEffect(() => {
+  //   console.log('Orders updated:', orders.length, 'orders');
+  // }, [orders]);
+
+  // const user = JSON.parse(localStorage.getItem('user') || '{}'); // Reserved for future API use
 
   useEffect(() => {
     fetchOrders();
-    // Poll for new orders every 30 seconds
-    const interval = setInterval(fetchOrders, 30000);
-    return () => clearInterval(interval);
+    // Poll for new orders every 5 seconds for real-time updates
+    const interval = setInterval(fetchOrders, 5000);
+    
+    // Refresh when window comes into focus
+    const handleFocus = () => fetchOrders();
+    window.addEventListener('focus', handleFocus);
+    
+    // Listen for new orders from POS
+    const handleNewOrder = (event) => {
+      // console.log('New order received from POS:', event.detail); // Debug disabled for production
+      setLastUpdate(new Date());
+      fetchOrders(); // Immediately refresh when new order is created
+      toast.success(`New order #${event.detail.id} received!`);
+    };
+    window.addEventListener('orderCreated', handleNewOrder);
+    
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('focus', handleFocus);
+      window.removeEventListener('orderCreated', handleNewOrder);
+    };
 // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const fetchOrders = async () => {
     try {
-      const response = await axios.get(`/api/orders/queue/${user.industry}`);
-      setOrders(response.data);
+      // For now, always use localStorage (since API isn't set up yet)
+      const localOrders = JSON.parse(localStorage.getItem('orders') || '[]');
+      
+      // Only show orders that are not completed
+      const activeOrders = localOrders.filter(order => order.status !== 'completed');
+      
+      setOrders(activeOrders);
+      setLastUpdate(new Date());
+      
+      // TODO: Re-enable API when backend is ready
+      // const response = await axios.get(`/api/orders/queue/${user.industry}`);
+      // setOrders(response.data);
     } catch (error) {
-      console.error('Error fetching orders:', error);
-      toast.error('Failed to fetch orders');
+      console.error('Error loading orders:', error);
+      setOrders([]);
     } finally {
       setLoading(false);
     }
   };
 
+
+
   const updateOrderStatus = async (orderId, newStatus) => {
     try {
+      // Get all orders from localStorage (including completed ones)
+      const allOrders = JSON.parse(localStorage.getItem('orders') || '[]');
+      
+      // Update the specific order in the complete list
+      const updatedAllOrders = allOrders.map(order => 
+        order.id === orderId ? { 
+          ...order, 
+          status: newStatus,
+          ...(newStatus === 'preparing' && { startedAt: new Date().toISOString() }),
+          ...(newStatus === 'ready' && { completedAt: new Date().toISOString() })
+        } : order
+      );
+      
+      // Save complete updated list to localStorage
+      localStorage.setItem('orders', JSON.stringify(updatedAllOrders));
+      
+      // Update local display state (filter out completed orders for queue display)
+      const activeOrders = updatedAllOrders.filter(order => order.status !== 'completed');
+      setOrders(activeOrders);
+      
+              // Simplified - financial updates handled by event listeners
+      
+      // Trigger event for other components that might be listening
+      window.dispatchEvent(new CustomEvent('orderUpdated', { 
+        detail: { orderId, newStatus } 
+      }));
+      
+      // Also trigger financial update event
+      window.dispatchEvent(new CustomEvent('financialUpdate', { 
+        detail: { type: 'orderStatusChange', orderId, newStatus }
+      }));
+      
+    try {
       await axios.patch(`/api/orders/${orderId}/status`, { status: newStatus });
-      toast.success(`Order ${newStatus}`);
-      fetchOrders();
+      } catch (apiError) {
+        // console.log('API not available, using localStorage only'); // Debug disabled
+      }
+      
+      toast.success(`Order moved to ${newStatus.replace('-', ' ')}`);
+      // console.log(`Order ${orderId} moved to ${newStatus}`); // Debug disabled
     } catch (error) {
       console.error('Error updating order status:', error);
       toast.error('Failed to update order status');
+      // Revert the optimistic update
+      fetchOrders();
     }
   };
 
-  const getStatusColor = (status) => {
-    switch (status) {
-      case 'pending':
-        return 'bg-yellow-100 text-yellow-800';
-      case 'confirmed':
-        return 'bg-blue-100 text-blue-800';
-      case 'preparing':
-        return 'bg-orange-100 text-orange-800';
-      case 'ready':
-        return 'bg-green-100 text-green-800';
-      case 'delivered':
-        return 'bg-gray-100 text-gray-800';
-      case 'cancelled':
-        return 'bg-red-100 text-red-800';
-      default:
-        return 'bg-gray-100 text-gray-800';
-    }
+
+
+
+
+  const formatCurrency = (amount) => {
+    return new Intl.NumberFormat('en-PH', {
+      style: 'currency',
+      currency: 'PHP',
+      minimumFractionDigits: 2
+    }).format(amount);
   };
 
-  const getStatusIcon = (status) => {
-    switch (status) {
-      case 'pending':
-        return <Clock size={16} />;
-      case 'confirmed':
-        return <AlertCircle size={16} />;
-      case 'preparing':
-        return <ChefHat size={16} />;
-      case 'ready':
-        return <CheckCircle size={16} />;
-      case 'delivered':
-        return <CheckCircle size={16} />;
-      case 'cancelled':
-        return <XCircle size={16} />;
-      default:
-        return <Clock size={16} />;
-    }
-  };
+  const { inQueue, preparing, ready } = useMemo(() => {
+    const inQueue = orders.filter(order => order.status === 'in-queue');
+    const preparing = orders.filter(order => order.status === 'preparing');
+    const ready = orders.filter(order => order.status === 'ready');
 
-  const getTimeElapsed = (createdAt) => {
-    const now = new Date();
-    const orderTime = new Date(createdAt);
-    const diffMs = now - orderTime;
-    const diffMins = Math.floor(diffMs / 60000);
-    const diffHours = Math.floor(diffMins / 60);
-    
-    if (diffHours > 0) {
-      return `${diffHours}h ${diffMins % 60}m`;
-    }
-    return `${diffMins}m`;
-  };
+          // Debug disabled for production
+      // console.log('Order status breakdown:', {
+      //   total: orders.length,
+      //   inQueue: inQueue.length,
+      //   preparing: preparing.length,
+      //   ready: ready.length,
+      //   orders: orders.map(o => ({ id: o.id, status: o.status }))
+      // });
 
-  const filteredOrders = selectedStatus === 'all' 
-    ? orders 
-    : orders.filter(order => order.status === selectedStatus);
+    return { inQueue, preparing, ready };
+  }, [orders]);
 
-  const pendingOrders = orders.filter(order => order.status === 'pending');
-  const preparingOrders = orders.filter(order => order.status === 'preparing');
-  const readyOrders = orders.filter(order => order.status === 'ready');
+  const StatusColumn = ({ title, icon: Icon, color, orders, status, nextStatus, canMove = true }) => (
+    <div className="flex-1 bg-white rounded-xl border border-gray-200 overflow-hidden">
+      {/* Header */}
+      <div className={`${color} p-4 text-white`}>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <Icon size={24} />
+            <h3 className="text-lg font-semibold">{title}</h3>
+          </div>
+          <span className="bg-white/20 text-white px-3 py-1 rounded-full text-sm font-medium">
+            {orders.length}
+          </span>
+        </div>
+      </div>
+
+      {/* Content */}
+      <div className="p-4 max-h-[calc(100vh-300px)] overflow-y-auto">
+        {orders.length === 0 ? (
+          <div className="text-center py-8 text-gray-500">
+            <Icon size={48} className="mx-auto mb-3 opacity-30" />
+            <p>No orders in this stage</p>
+          </div>
+        ) : (
+          <AnimatePresence>
+            <div className="space-y-3">
+              {orders.map((order) => (
+                <motion.div
+                  key={`${order.id}-${order.timestamp}`}
+                  layout
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, x: 100 }}
+                  whileHover={{ scale: 1.02 }}
+                  className="bg-gray-50 rounded-lg p-4 border border-gray-100 hover:shadow-md transition-all cursor-pointer"
+                >
+                  {/* Order Header */}
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-2">
+                      {order.type === 'table' ? (
+                        <Hash className="text-gray-600" size={16} />
+                      ) : (
+                        <User className="text-gray-600" size={16} />
+                      )}
+                      <span className="font-semibold text-gray-900">
+                        {order.type === 'table' ? order.customer : `Takeout - ${order.customer}`}
+                      </span>
+                    </div>
+                    <OrderTimer order={order} />
+                  </div>
+
+                  {/* Customer Name (for non-table orders) */}
+                  {order.type !== 'table' && (
+                    <div className="text-sm text-gray-600 mb-2">
+                      Customer: {order.customer}
+                    </div>
+                  )}
+
+                  {/* Timer Display */}
+                  <OrderTimer order={order} type="large" />
+
+                  {/* Items */}
+                  <div className="mb-3">
+                    <div className="text-sm text-gray-600 mb-1">Items:</div>
+                    <div className="flex flex-wrap gap-1">
+                      {order.items.map((item, index) => (
+                        <span key={index} className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full">
+                          {item}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Footer */}
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1 text-sm font-medium text-gray-900">
+                      <DollarSign size={14} />
+                      {formatCurrency(order.total)}
+                    </div>
+
+                    {/* Estimated Time or Action Button */}
+                    <div className="flex items-center gap-2">
+                      {order.estimatedTime > 0 && (
+                        <div className="flex items-center gap-1 text-xs text-orange-600 bg-orange-100 px-2 py-1 rounded-full">
+                          <Timer size={12} />
+                          {order.estimatedTime}m
+                        </div>
+                      )}
+                      
+                      {canMove && nextStatus && (
+                        nextStatus === 'completed' ? (
+                          <button
+                            onClick={() => {
+                              // Update order status to completed instead of removing it
+                              const allOrders = JSON.parse(localStorage.getItem('orders') || '[]');
+                              const updatedAllOrders = allOrders.map(o => 
+                                o.id === order.id 
+                                  ? { ...o, status: 'completed', completedAt: new Date().toISOString() }
+                                  : o
+                              );
+                              
+                              // Save updated orders to localStorage
+                              localStorage.setItem('orders', JSON.stringify(updatedAllOrders));
+                              
+                              // Update financial summaries
+                              // Simplified - financial updates handled by event listeners
+                              
+                              // Remove from queue display (but keep in localStorage for sales tracking)
+                              const updatedOrders = orders.filter(o => o.id !== order.id);
+                              setOrders(updatedOrders);
+                              
+                              // Trigger events
+                              window.dispatchEvent(new CustomEvent('orderUpdated', { 
+                                detail: { orderId: order.id, newStatus: 'completed' } 
+                              }));
+                              window.dispatchEvent(new CustomEvent('financialUpdate', { 
+                                detail: { type: 'orderCompleted', orderId: order.id }
+                              }));
+                              
+                              toast.success('Order completed and recorded in sales');
+                              // console.log('Order completed:', order.id, 'Total:', order.total); // Debug disabled
+                            }}
+                            className="flex items-center gap-1 bg-green-500 text-white px-3 py-1 rounded-full text-xs font-medium hover:bg-green-600 transition-colors"
+                          >
+                            Complete
+                            <ArrowRight size={12} />
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => updateOrderStatus(order.id, nextStatus)}
+                            className="flex items-center gap-1 bg-primary-500 text-white px-3 py-1 rounded-full text-xs font-medium hover:bg-primary-600 transition-colors"
+                          >
+                            Next
+                            <ArrowRight size={12} />
+                          </button>
+                        )
+                      )}
+                    </div>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          </AnimatePresence>
+        )}
+      </div>
+    </div>
+  );
 
   if (loading) {
     return (
+      <div className="p-6 bg-gray-50 min-h-screen">
       <div className="flex items-center justify-center h-64">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="p-6">
-      {/* Header */}
-      <div className="flex justify-between items-center mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Order Queue</h1>
-          <p className="text-gray-600">Manage and track order status</p>
-        </div>
-        <button
-          onClick={fetchOrders}
-          className="btn-secondary flex items-center gap-2"
-        >
-          <Clock size={20} />
-          Refresh
-        </button>
-      </div>
-
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-white rounded-lg p-6 shadow-soft"
+      className="p-6 bg-gray-50 min-h-screen"
         >
+            {/* Header */}
+      <div className="mb-8">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-600">Total Orders</p>
-              <p className="text-2xl font-bold text-gray-900">{orders.length}</p>
-            </div>
-            <ChefHat className="text-primary-600" size={24} />
-          </div>
-        </motion.div>
-
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="bg-white rounded-lg p-6 shadow-soft"
-        >
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">Pending</p>
-              <p className="text-2xl font-bold text-yellow-600">{pendingOrders.length}</p>
-            </div>
-            <Clock className="text-yellow-600" size={24} />
-          </div>
-        </motion.div>
-
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-          className="bg-white rounded-lg p-6 shadow-soft"
-        >
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">Preparing</p>
-              <p className="text-2xl font-bold text-orange-600">{preparingOrders.length}</p>
-            </div>
-            <ChefHat className="text-orange-600" size={24} />
-          </div>
-        </motion.div>
-
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
-          className="bg-white rounded-lg p-6 shadow-soft"
-        >
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">Ready</p>
-              <p className="text-2xl font-bold text-green-600">{readyOrders.length}</p>
-            </div>
-            <CheckCircle className="text-green-600" size={24} />
-          </div>
-        </motion.div>
-      </div>
-
-      {/* Status Filter */}
-      <div className="bg-white rounded-lg shadow-soft p-4 mb-6">
+            <div className="flex items-center gap-4">
+                          <div>
+                <h1 className="text-3xl font-bold text-gray-900 mb-2">Order Queue</h1>
+                <p className="text-gray-600">Real-time order management and status tracking</p>
+                <p className="text-sm text-gray-500">Last updated: {lastUpdate.toLocaleTimeString()}</p>
+              </div>
         <div className="flex gap-2">
           <button
-            onClick={() => setSelectedStatus('all')}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-              selectedStatus === 'all'
-                ? 'bg-primary-600 text-white'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-            }`}
-          >
-            All Orders
+                  onClick={() => {
+                    setLastUpdate(new Date());
+                    fetchOrders();
+                    toast.success('Orders refreshed');
+                  }}
+                  className="flex items-center gap-2 bg-primary-100 text-primary-700 px-4 py-2 rounded-lg hover:bg-primary-200 transition-colors"
+                >
+                  <RefreshCw size={16} />
+                  Refresh
           </button>
           <button
-            onClick={() => setSelectedStatus('pending')}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-              selectedStatus === 'pending'
-                ? 'bg-yellow-600 text-white'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-            }`}
-          >
-            Pending
+                  onClick={() => {
+                    const orders = localStorage.getItem('orders');
+                    // Debug disabled for production
+                    // console.log('Raw localStorage orders:', orders);
+                    // if (orders) {
+                    //   console.log('Parsed orders:', JSON.parse(orders));
+                    // }
+                    toast(`Found ${orders ? JSON.parse(orders).length : 0} orders in localStorage`);
+                  }}
+                  className="flex items-center gap-2 bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200 transition-colors"
+                >
+                  Debug
           </button>
           <button
-            onClick={() => setSelectedStatus('preparing')}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-              selectedStatus === 'preparing'
-                ? 'bg-orange-600 text-white'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-            }`}
-          >
-            Preparing
-          </button>
-          <button
-            onClick={() => setSelectedStatus('ready')}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-              selectedStatus === 'ready'
-                ? 'bg-green-600 text-white'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-            }`}
-          >
-            Ready
+                  onClick={() => {
+                    localStorage.removeItem('orders');
+                    setOrders([]);
+                    toast.success('All orders cleared');
+                  }}
+                  className="flex items-center gap-2 bg-red-100 text-red-700 px-4 py-2 rounded-lg hover:bg-red-200 transition-colors"
+                >
+                  Clear All
           </button>
         </div>
-      </div>
-
-      {/* Orders Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filteredOrders.map((order) => (
-          <motion.div
-            key={order._id}
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="bg-white rounded-lg shadow-soft p-6 border-l-4 border-primary-600"
-          >
-            {/* Order Header */}
-            <div className="flex justify-between items-start mb-4">
-              <div>
-                <h3 className="font-semibold text-gray-900">Order #{order.orderNumber}</h3>
-                <p className="text-sm text-gray-500">
-                  {new Date(order.createdAt).toLocaleTimeString()}
-                </p>
-              </div>
-              <div className="flex items-center gap-2">
-                {getStatusIcon(order.status)}
-                <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(order.status)}`}>
-                  {order.status}
-                </span>
               </div>
             </div>
 
-            {/* Customer Info */}
-            <div className="mb-4">
-              <div className="flex items-center gap-2 mb-2">
-                <Users size={16} className="text-gray-400" />
-                <span className="text-sm font-medium text-gray-900">
-                  {order.customer.name}
-                </span>
+          {/* Stats */}
+          <div className="flex items-center gap-6">
+            <div className="text-center">
+              <div className="text-2xl font-bold text-yellow-600">{inQueue.length}</div>
+              <div className="text-sm text-gray-500">In Queue</div>
               </div>
-              <p className="text-sm text-gray-600">{order.customer.phone}</p>
-              {order.orderType && (
-                <span className="inline-block mt-1 px-2 py-1 text-xs bg-gray-100 text-gray-700 rounded">
-                  {order.orderType}
-                </span>
-              )}
+            <div className="text-center">
+              <div className="text-2xl font-bold text-blue-600">{preparing.length}</div>
+              <div className="text-sm text-gray-500">Preparing</div>
             </div>
-
-            {/* Order Items */}
-            <div className="mb-4">
-              <h4 className="text-sm font-medium text-gray-900 mb-2">Items:</h4>
-              <div className="space-y-1">
-                {order.items.map((item, index) => (
-                  <div key={index} className="flex justify-between text-sm">
-                    <span className="text-gray-700">
-                      {item.quantity}x {item.product.name}
-                    </span>
-                    <span className="text-gray-900">${item.total}</span>
-                  </div>
-                ))}
+            <div className="text-center">
+              <div className="text-2xl font-bold text-green-600">{ready.length}</div>
+              <div className="text-sm text-gray-500">Ready</div>
+              </div>
+            </div>
               </div>
             </div>
 
-            {/* Order Total */}
-            <div className="border-t pt-3 mb-4">
-              <div className="flex justify-between items-center">
-                <span className="font-semibold text-gray-900">Total:</span>
-                <span className="font-bold text-lg text-primary-600">${order.total}</span>
+      {/* Three Column Layout */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <StatusColumn
+          title="In the Queue"
+          icon={Clock}
+          color="bg-gradient-to-r from-yellow-500 to-orange-500"
+          orders={inQueue}
+          status="in-queue"
+          nextStatus="preparing"
+        />
+        
+        <StatusColumn
+          title="Now Preparing"
+          icon={ChefHat}
+          color="bg-gradient-to-r from-blue-500 to-indigo-500"
+          orders={preparing}
+          status="preparing"
+          nextStatus="ready"
+        />
+        
+        <StatusColumn
+          title="Ready for Pickup"
+          icon={Package}
+          color="bg-gradient-to-r from-green-500 to-emerald-500"
+          orders={ready}
+          status="ready"
+          nextStatus="completed"
+          canMove={true}
+        />
               </div>
-            </div>
-
-            {/* Time Elapsed */}
-            <div className="mb-4">
-              <div className="flex items-center gap-2 text-sm text-gray-500">
-                <Clock size={14} />
-                <span>Elapsed: {getTimeElapsed(order.createdAt)}</span>
-              </div>
-            </div>
-
-            {/* Action Buttons */}
-            <div className="flex gap-2">
-              {order.status === 'pending' && (
-                <>
-                  <button
-                    onClick={() => updateOrderStatus(order._id, 'confirmed')}
-                    className="flex-1 px-3 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition-colors"
-                  >
-                    Confirm
-                  </button>
-                  <button
-                    onClick={() => updateOrderStatus(order._id, 'cancelled')}
-                    className="px-3 py-2 bg-red-600 text-white text-sm rounded-lg hover:bg-red-700 transition-colors"
-                  >
-                    Cancel
-                  </button>
-                </>
-              )}
-              
-              {order.status === 'confirmed' && (
-                <button
-                  onClick={() => updateOrderStatus(order._id, 'preparing')}
-                  className="flex-1 px-3 py-2 bg-orange-600 text-white text-sm rounded-lg hover:bg-orange-700 transition-colors"
-                >
-                  Start Preparing
-                </button>
-              )}
-              
-              {order.status === 'preparing' && (
-                <button
-                  onClick={() => updateOrderStatus(order._id, 'ready')}
-                  className="flex-1 px-3 py-2 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 transition-colors"
-                >
-                  Mark Ready
-                </button>
-              )}
-              
-              {order.status === 'ready' && (
-                <button
-                  onClick={() => updateOrderStatus(order._id, 'delivered')}
-                  className="flex-1 px-3 py-2 bg-gray-600 text-white text-sm rounded-lg hover:bg-gray-700 transition-colors"
-                >
-                  Mark Delivered
-                </button>
-              )}
-            </div>
-
-            {/* Notes */}
-            {order.notes && (
-              <div className="mt-3 p-2 bg-yellow-50 rounded text-sm text-yellow-800">
-                <strong>Notes:</strong> {order.notes}
-              </div>
-            )}
           </motion.div>
-        ))}
-      </div>
-
-      {/* Empty State */}
-      {filteredOrders.length === 0 && (
-        <div className="text-center py-12">
-          <ChefHat className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-          <h3 className="text-lg font-medium text-gray-900 mb-2">No orders found</h3>
-          <p className="text-gray-600">
-            {selectedStatus === 'all' 
-              ? 'No orders in the queue at the moment.'
-              : `No ${selectedStatus} orders at the moment.`
-            }
-          </p>
-        </div>
-      )}
-    </div>
   );
 };
 

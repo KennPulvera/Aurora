@@ -1,18 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AnimatePresence } from 'framer-motion';
+// Removed complex financial utils - using direct localStorage now
 import Sidebar from './components/Sidebar';
 import Dashboard from './pages/Dashboard';
 import POS from './pages/POS';
 import OrderQueue from './pages/OrderQueue';
 import TimeClock from './pages/TimeClock';
-import Sales from './pages/Sales';
 import Menu from './pages/Menu';
 import Inventory from './pages/Inventory';
 import Recipes from './pages/Recipes';
-import Expenses from './pages/Expenses';
+
 import Payroll from './pages/Payroll';
-import Reports from './pages/Reports';
 import Admin from './pages/Admin';
 import SuperAdmin from './pages/SuperAdmin';
 import EmployeeManagement from './pages/EmployeeManagement';
@@ -37,6 +36,11 @@ import Products from './pages/Products';
 import Orders from './pages/Orders';
 import Customers from './pages/Customers';
 
+// New Analytics Pages
+import SalesAnalytics from './pages/SalesAnalytics';
+import ExpenseTracker from './pages/ExpenseTracker';
+import BusinessReports from './pages/BusinessReports';
+
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -48,6 +52,10 @@ function App() {
     if (token) {
       setIsAuthenticated(true);
     }
+    
+    // Initialize financial system
+    // Financial initialization removed - using direct localStorage in components
+    
     setIsLoading(false);
   }, []);
 
@@ -112,11 +120,11 @@ function App() {
             {/* Common Routes */}
             <Route path="/dashboard-features" element={<Features />} />
             <Route path="/time-clock" element={<TimeClock />} />
-            <Route path="/sales" element={<Sales />} />
+                  <Route path="/sales-analytics" element={<SalesAnalytics />} />
+                  <Route path="/expense-tracker" element={<ExpenseTracker />} />
+                  <Route path="/business-reports" element={<BusinessReports />} />
             <Route path="/inventory" element={<Inventory />} />
-            <Route path="/expenses" element={<Expenses />} />
             <Route path="/payroll" element={<Payroll />} />
-            <Route path="/reports" element={<Reports />} />
                               <Route path="/admin" element={<Admin />} />
                   <Route path="/super-admin" element={<SuperAdmin />} />
                   <Route path="/employee-management" element={<EmployeeManagement />} />

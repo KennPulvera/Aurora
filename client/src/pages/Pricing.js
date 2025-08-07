@@ -68,7 +68,7 @@ const Pricing = () => {
     toast.success(`Redirecting to ${planName} upgrade...`);
     // In a real app, this would redirect to payment processor
     setTimeout(() => {
-      toast.info('Payment integration coming soon!');
+      toast('Payment integration coming soon!');
     }, 1500);
   };
 
